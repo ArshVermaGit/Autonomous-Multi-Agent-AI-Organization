@@ -5,6 +5,7 @@ event broadcasting, and the self-critique feedback loop.
 """
 
 import asyncio
+import os
 import uuid
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
@@ -15,6 +16,7 @@ from .memory.project_memory import ProjectMemory
 from .memory.decision_log import DecisionLog
 from .memory.cost_ledger import CostLedger
 from .memory.artifacts_store import ArtifactsStore
+from .kafka_dispatcher import KafkaDispatcher, KafkaEventPublisher
 
 logger = structlog.get_logger(__name__)
 
@@ -91,7 +93,9 @@ class OrchestratorEngine:
         self._agent_registry: Dict[str, Any] = {}
         self._event_subscribers: List[Callable] = []
         self._active_projects: Dict[str, Dict[str, Any]] = {}
-        logger.info("OrchestratorEngine initialized")
+        # Kafka mode: enabled when KAFKA_MOCK != true and agents run as separate services
+        self.use_kafka = os.getenv("KAFKA_MODE", "false").lower() == "true"
+        logger.info("OrchestratorEngine initialized", kafka_mode=self.use_kafka)
 
     def register_agent(self, role: str, agent_instance: Any):
         """Register an agent for a specific role."""
@@ -137,14 +141,22 @@ class OrchestratorEngine:
         }
 
         self._active_projects[project_id] = {
-            "memory": memory,
-            "decision_log": decision_log,
-            "cost_ledger": cost_ledger,
-            "artifacts": artifacts,
-            "task_graph": None,
-            "status": "bootstrapping",
-            "started_at": datetime.utcnow()
+            "memory":        memory,
+            "decision_log":  decision_log,
+            "cost_ledger":   cost_ledger,
+            "artifacts":     artifacts,
+            "task_graph":    None,
+            "status":        "bootstrapping",
+            "started_at":    datetime.utcnow(),
+            "kafka_dispatcher": None,
         }
+
+        # Start Kafka dispatcher for this project if in Kafka mode
+        if self.use_kafka:
+            dispatcher = KafkaDispatcher(project_id=project_id)
+            await dispatcher.start()
+            self._active_projects[project_id]["kafka_dispatcher"] = dispatcher
+            logger.info("Kafka dispatcher started for project", project_id=project_id)
 
         await self._emit(ExecutionEvent(
             event_type="project_started",
@@ -293,7 +305,7 @@ class OrchestratorEngine:
         logger.info("Task graph execution complete", **summary)
 
     async def _execute_single_task(self, project_id: str, task: Task, task_graph: TaskGraph):
-        """Execute one task, with retry on failure."""
+        """Execute one task — via Kafka dispatch or direct agent call."""
         ctx = self._active_projects[project_id]
         task.status = TaskStatus.IN_PROGRESS
         task.mark_started()
@@ -304,22 +316,50 @@ class OrchestratorEngine:
             data={"task_id": task.id, "task_name": task.name}
         ))
 
+        dispatcher: Optional[KafkaDispatcher] = ctx.get("kafka_dispatcher")
+
         while True:
             try:
-                agent = self._agent_registry.get(task.agent_role)
-                exec_ctx = AgentExecutionContext(
-                    project_id, task,
-                    ctx["memory"], ctx["decision_log"],
-                    ctx["cost_ledger"], ctx["artifacts"],
-                    self._emit
-                )
-
-                if agent:
-                    output = await agent.execute_task(task=task, context=exec_ctx)
+                if dispatcher:
+                    # ── Kafka distributed execution ───────────────
+                    # Build input_data from context so agent has what it needs
+                    input_data = {
+                        "task_name":    task.name,
+                        "task_type":    task.task_type or task.agent_role.lower(),
+                        "business_plan": ctx["memory"].business_plan,
+                        "architecture": ctx["memory"].architecture,
+                        "project_config": ctx["memory"].project_config,
+                    }
+                    result_msg = await dispatcher.dispatch_and_wait(
+                        task       = task,
+                        input_data = input_data,
+                        priority   = task.priority if hasattr(task, 'priority') else 5,
+                        trace_id   = str(uuid.uuid4()).replace("-", "")[:16],
+                    )
+                    output = result_msg.output_data
+                    # Record cost from agent report
+                    if result_msg.cost_usd:
+                        ctx["cost_ledger"].record(
+                            agent    = task.agent_role,
+                            cost_usd = result_msg.cost_usd,
+                            tokens   = result_msg.tokens_used,
+                        )
                 else:
-                    # Demo mode — simulate execution
-                    await asyncio.sleep(1)
-                    output = {"status": "simulated", "task": task.name}
+                    # ── Direct in-process execution (default mode) ─
+                    agent = self._agent_registry.get(task.agent_role)
+                    exec_ctx = AgentExecutionContext(
+                        project_id, task,
+                        ctx["memory"], ctx["decision_log"],
+                        ctx["cost_ledger"], ctx["artifacts"],
+                        self._emit
+                    )
+
+                    if agent:
+                        output = await agent.execute_task(task=task, context=exec_ctx)
+                    else:
+                        # Demo mode — simulate execution
+                        await asyncio.sleep(1)
+                        output = {"status": "simulated", "task": task.name}
 
                 task.mark_completed(output)
                 await self._emit(ExecutionEvent(
