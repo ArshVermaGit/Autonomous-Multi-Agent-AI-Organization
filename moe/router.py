@@ -19,6 +19,7 @@ from .scoring import (
     ENSEMBLE_THRESHOLD
 )
 from messaging.schemas import TaskMessage, MoERouteRequest, MoERouteDecision
+from .http_client import get_rust_client
 
 logger = structlog.get_logger(__name__)
 
@@ -77,7 +78,32 @@ class MoERouter:
         """
         start_time = time.monotonic()
 
-        # ── Step 1: Direct Routing Check ──────────────────────────────────
+        # ── Step 0: Try Rust Service (Fast Path) ───────────────────────────
+        rust_client = get_rust_client()
+        if rust_client:
+            # We must pass the dynamic expert map + stats to Rust so it matches python state
+            experts_map = {role: info for role, info in self._registry.all_experts().items()}
+            stats_map   = {role: s.to_dict() for role, s in self._registry.all_stats().items()}
+
+            resp = await rust_client.route(
+                task_id         = task_id,
+                task_type       = task_type,
+                task_name       = task_name,
+                project_id      = project_id,
+                input_context   = input_context,
+                required_skills = required_skills,
+                priority        = priority,
+                force_ensemble  = force_ensemble,
+                trace_id        = trace_id,
+                experts         = experts_map,
+                stats           = stats_map,
+            )
+            if resp:
+                decision = MoERouteDecision(**resp)
+                await self._record_decision(decision, decision.routing_type, time.monotonic() - start_time)
+                return decision
+
+        # ── Step 1: Direct Routing Check (Python Fallback) ────────────────
         direct_expert = self._registry.get_direct_expert_for_task_type(task_type)
         if direct_expert and not force_ensemble:
             expert_info = self._registry.get_expert(direct_expert)
@@ -182,6 +208,20 @@ class MoERouter:
         self, tasks: List[Dict[str, Any]]
     ) -> List[MoERouteDecision]:
         """Route multiple tasks in parallel."""
+        # Fast path: Rust batch route
+        rust_client = get_rust_client()
+        if rust_client:
+            experts_map = {role: info for role, info in self._registry.all_experts().items()}
+            stats_map   = {role: s.to_dict() for role, s in self._registry.all_stats().items()}
+            resp = await rust_client.route_batch(tasks, experts=experts_map, stats=stats_map)
+            if resp:
+                # Need to log all decisions
+                for r in resp:
+                    dec = MoERouteDecision(**r)
+                    await self._record_decision(dec, dec.routing_type, r.get("routing_ms", 0) / 1000.0)
+                return [MoERouteDecision(**r) for r in resp]
+
+        # Python fallback:
         decisions = await asyncio.gather(*[
             self.route(
                 task_type=t.get("task_type", ""),
