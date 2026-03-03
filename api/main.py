@@ -11,8 +11,7 @@ from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from openai import OpenAI
-from anthropic import Anthropic
+from google import genai
 
 from fastapi import (
     FastAPI,
@@ -39,18 +38,14 @@ logger = structlog.get_logger(__name__)
 load_dotenv()
 
 llm_client = None
-model_name = "gpt-4-turbo-preview"
+model_name = "gemini-2.5-flash"
+gemini_key = os.getenv("GEMINI_API_KEY")
 
-if os.getenv("ANTHROPIC_API_KEY"):
-    llm_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-    model_name = "claude-3-opus-20240229"
-    logger.info("Initializing agents with Anthropic LLM")
-elif os.getenv("OPENAI_API_KEY"):
-    llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    model_name = "gpt-4-turbo-preview"
-    logger.info("Initializing agents with OpenAI LLM")
+if gemini_key and gemini_key != "your-gemini-key":
+    llm_client = genai.Client(api_key=gemini_key)
+    logger.info("Initializing agents with Google Gemini LLM")
 else:
-    logger.warning("No LLM API keys found. Agents will run in mock mode.")
+    logger.warning("No Gemini API key found. Agents will run in mock mode.")
 
 # ── Global Orchestrator ────────────────────────────────────────────
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")

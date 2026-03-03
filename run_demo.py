@@ -11,8 +11,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-from openai import OpenAI
-from anthropic import Anthropic
+from google import genai
 
 from rich.console import Console
 from rich.panel import Panel
@@ -51,19 +50,15 @@ async def run_full_demo(idea: str):
 
     # Dynamic LLM Setup
     llm_client = None
-    model_name = "gpt-4-turbo-preview"
+    model_name = "gemini-2.5-flash"
+    gemini_key = os.getenv("GEMINI_API_KEY")
 
-    if os.getenv("ANTHROPIC_API_KEY"):
-        llm_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        model_name = "claude-3-opus-20240229"
-        console.print("[dim]LLM initialized: Anthropics Claude[/]")
-    elif os.getenv("OPENAI_API_KEY"):
-        llm_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        model_name = "gpt-4-turbo-preview"
-        console.print("[dim]LLM initialized: OpenAI GPT-4[/]")
+    if gemini_key and gemini_key != "your-gemini-key":
+        llm_client = genai.Client(api_key=gemini_key)
+        console.print("[dim]LLM initialized: Google Gemini[/dim]")
     else:
         console.print(
-            "[yellow bold]⚠️ No LLM API keys found. Agents will run in mock mode.[ /]"
+            "[yellow bold]⚠️ No valid Gemini API key found. Agents will run in mock mode.[/yellow bold]"
         )
 
     project_id = f"demo-{datetime.now().strftime('%Y%m%d-%H%M%S')}"

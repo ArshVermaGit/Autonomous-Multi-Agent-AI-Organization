@@ -9,6 +9,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
+from google.genai import types
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -85,45 +86,39 @@ class BaseAgent(ABC):
             # Demo/mock mode
             return self._mock_llm_response(messages)
 
-        full_messages = [{"role": "system", "content": self.system_prompt}, *messages]
-
         try:
             # Try primary LLM
-            if hasattr(self.llm_client, "messages"):
-                # Anthropic API
+            if hasattr(self.llm_client, "models"):
+                # Gemini API
                 system_prompt = self.system_prompt
+                config = types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                )
                 if response_format == "json_object":
-                    system_prompt += "\n\nYou must output valid JSON only."
-                ant_messages = [
-                    {"role": m["role"], "content": m["content"]}
-                    for m in messages
-                    if m["role"] != "system"
-                ]
-                response = await asyncio.to_thread(
-                    self.llm_client.messages.create,
-                    model=self.model_name,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    system=system_prompt,
-                    messages=ant_messages,
-                )
-                return response.content[0].text
-            else:
-                # OpenAI API
-                response = await asyncio.to_thread(
-                    self.llm_client.chat.completions.create,
-                    model=self.model_name,
-                    messages=full_messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **(
-                        {"response_format": {"type": response_format}}
-                        if response_format
-                        else {}
-                    ),
-                )
-                return response.choices[0].message.content
+                    config.response_mime_type = "application/json"
 
+                gemini_messages = []
+                for m in messages:
+                    if m["role"] == "system":
+                        continue
+                    role = "model" if m["role"] == "assistant" else "user"
+                    gemini_messages.append(
+                        types.Content(
+                            role=role, parts=[types.Part.from_text(text=m["content"])]
+                        )
+                    )
+
+                response = await asyncio.to_thread(
+                    self.llm_client.models.generate_content,
+                    model=self.model_name,
+                    contents=gemini_messages,
+                    config=config,
+                )
+                return response.text
+            else:
+                return self._mock_llm_response(messages)
         except Exception as e:
             logger.error("LLM call failed", error=str(e), agent=self.ROLE)
             raise
