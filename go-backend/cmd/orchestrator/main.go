@@ -5,16 +5,21 @@ package main
 
 import (
 	"context"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/orchestrator/server"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/config"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/db"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/kafka"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	pb "github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/orchestrator"
 )
 
 func main() {
@@ -75,12 +80,27 @@ func main() {
 	}()
 
 	// ── gRPC Server (for Gateway calls) ─────────────────────────────────
-	// TODO: start gRPC server on cfg.GRPCAddr()
-	// grpcServer := grpc.NewServer(grpc.UnaryInterceptor(loggingInterceptor))
-	// orchestratorpb.RegisterOrchestratorServiceServer(grpcServer, &OrchestratorServer{...})
+	lis, err := net.Listen("tcp", cfg.GRPCAddr())
+	if err != nil {
+		log.Fatal("failed to listen", zap.Error(err))
+	}
+
+	grpcServer := grpc.NewServer()
+
+	orchServer := server.NewOrchestratorServer(pgPool, producer)
+	pb.RegisterOrchestratorServiceServer(grpcServer, orchServer)
+
+	// Register reflection service on gRPC server (useful for evans / grpcui)
+	reflection.Register(grpcServer)
+
+	go func() {
+		log.Info("orchestrator grpc listening", zap.String("grpc_addr", cfg.GRPCAddr()))
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Error("grpc serve error", zap.Error(err))
+		}
+	}()
 
 	log.Info("orchestrator ready",
-		zap.String("grpc_addr", cfg.GRPCAddr()),
 		zap.Strings("kafka_brokers", cfg.Kafka.Brokers),
 	)
 
@@ -90,6 +110,7 @@ func main() {
 	<-quit
 
 	log.Info("orchestrator shutting down")
+	grpcServer.GracefulStop()
 	cancel()
 	_ = resultConsumer.Close()
 	log.Info("orchestrator stopped cleanly")

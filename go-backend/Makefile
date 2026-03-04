@@ -62,11 +62,12 @@ tidy: ## Tidy go.mod
 
 proto: ## Generate gRPC stubs from .proto files
 	@echo -e "$(BOLD)Generating protobuf stubs...$(RESET)"
+	rm -rf proto/gen/*
 	protoc \
-		--go_out=./proto/gen \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=./proto/gen \
-		--go-grpc_opt=paths=source_relative \
+		--go_out=. \
+		--go_opt=module=github.com/DsThakurRawat/autonomous-org/go-backend \
+		--go-grpc_out=. \
+		--go-grpc_opt=module=github.com/DsThakurRawat/autonomous-org/go-backend \
 		proto/*.proto
 	@echo -e "$(CYAN)Stubs written to proto/gen/$(RESET)"
 

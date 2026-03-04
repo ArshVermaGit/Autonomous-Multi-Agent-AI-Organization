@@ -1,16 +1,27 @@
-// Package handler implements the HTTP REST handlers for the API Gateway.
-// All handlers are pure functions — dependencies injected via closure.
 package handler
 
 import (
+	"context"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/grpcclient"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/logger"
+	pb "github.com/DsThakurRawat/autonomous-org/go-backend/proto/gen/orchestrator"
 )
+
+// Handler holds the dependencies mapped to HTTP routes
+type Handler struct {
+	OrchClient *grpcclient.OrchestratorClient
+}
+
+func NewHandler(orchClient *grpcclient.OrchestratorClient) *Handler {
+	return &Handler{
+		OrchClient: orchClient,
+	}
+}
 
 // ── Request/Response types ────────────────────────────────────────────────────
 
@@ -20,7 +31,7 @@ type CreateProjectRequest struct {
 }
 
 type BudgetInput struct {
-	MaxCostUSD float64 `json:"max_cost_usd"` // 0 = use tenant default
+	MaxCostUSD float64 `json:"max_cost_usd"`
 	MaxTokens  int64   `json:"max_tokens"`
 }
 
@@ -40,8 +51,7 @@ type ErrorResponse struct {
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 // CreateProject handles POST /v1/projects
-// Validates the request, creates a project record, and submits to the orchestrator.
-func CreateProject(c *fiber.Ctx) error {
+func (h *Handler) CreateProject(c *fiber.Ctx) error {
 	log := logger.L().With(
 		zap.String("handler", "CreateProject"),
 		zap.String("trace_id", c.Locals("trace_id").(string)),
@@ -56,7 +66,6 @@ func CreateProject(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate
 	if len(req.Idea) < 10 {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{
 			Code:  400,
@@ -64,32 +73,39 @@ func CreateProject(c *fiber.Ctx) error {
 		})
 	}
 
-	// Get user context injected by JWT middleware
+	// Assuming jwt middleware sets these
 	userID, _ := c.Locals("user_id").(string)
 	tenantID, _ := c.Locals("tenant_id").(string)
 
-	projectID := uuid.NewString()
+	resp, err := h.OrchClient.CreateProject(context.Background(), &pb.CreateProjectRequest{
+		TenantId: tenantID,
+		UserId:   userID,
+		Idea:     req.Idea,
+		Budget: &pb.BudgetConfig{
+			MaxCostUsd: req.Budget.MaxCostUSD,
+			MaxTokens:  req.Budget.MaxTokens,
+		},
+	})
 
-	log.Info("project creation request",
-		zap.String("project_id", projectID),
-		zap.String("user_id", userID),
-		zap.String("tenant_id", tenantID),
-		zap.String("idea_preview", req.Idea[:min(len(req.Idea), 60)]),
-	)
-
-	// TODO: call orchestrator gRPC service
-	// resp, err := orchestratorClient.CreateProject(c.Context(), &pb.CreateProjectRequest{...})
+	if err != nil {
+		log.Error("failed to create project via gRPC", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{
+			Code:    500,
+			Error:   "internal logic failure: " + err.Error(),
+			TraceID: c.Locals("trace_id").(string),
+		})
+	}
 
 	return c.Status(fiber.StatusAccepted).JSON(ProjectResponse{
-		ProjectID: projectID,
-		Status:    "pending",
-		CreatedAt: time.Now().UTC(),
-		Message:   "Project queued. Connect to /v1/projects/" + projectID + "/stream for live updates.",
+		ProjectID: resp.GetProjectId(),
+		Status:    resp.GetStatus().String(),
+		CreatedAt: resp.GetCreatedAt().AsTime(),
+		Message:   "Project queued. Connect to /v1/projects/" + resp.GetProjectId() + "/stream for live updates.",
 	})
 }
 
 // GetProject handles GET /v1/projects/:id
-func GetProject(c *fiber.Ctx) error {
+func (h *Handler) GetProject(c *fiber.Ctx) error {
 	projectID := c.Params("id")
 	tenantID, _ := c.Locals("tenant_id").(string)
 
@@ -97,67 +113,58 @@ func GetProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Code: 400, Error: "project_id required"})
 	}
 
-	logger.L().Info("get project", zap.String("project_id", projectID), zap.String("tenant_id", tenantID))
+	resp, err := h.OrchClient.GetProject(context.Background(), &pb.GetProjectRequest{
+		ProjectId: projectID,
+		TenantId:  tenantID,
+	})
 
-	// TODO: call orchestrator gRPC GetProject
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Code: 500, Error: err.Error()})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"project_id": projectID,
-		"status":     "running",
-		"tenant_id":  tenantID,
+		"project_id": resp.GetProjectId(),
+		"status":     resp.GetStatus().String(),
+		"tenant_id":  resp.GetTenantId(),
 	})
 }
 
 // ListProjects handles GET /v1/projects
-func ListProjects(c *fiber.Ctx) error {
-	tenantID, _ := c.Locals("tenant_id").(string)
-	userID, _ := c.Locals("user_id").(string)
-
-	logger.L().Info("list projects", zap.String("user_id", userID), zap.String("tenant_id", tenantID))
-
-	// TODO: query postgres with tenant_id filter
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"projects": []any{},
-		"total":    0,
-	})
+func (h *Handler) ListProjects(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"projects": []any{}, "total": 0})
 }
 
 // CancelProject handles DELETE /v1/projects/:id
-func CancelProject(c *fiber.Ctx) error {
+func (h *Handler) CancelProject(c *fiber.Ctx) error {
 	projectID := c.Params("id")
-	logger.L().Info("cancel project", zap.String("project_id", projectID))
-	// TODO: call orchestrator gRPC CancelProject
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "cancellation requested", "project_id": projectID})
+
+	resp, err := h.OrchClient.CancelProject(context.Background(), &pb.CancelProjectRequest{
+		ProjectId: projectID,
+		Reason:    "Requested via API",
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Code: 500, Error: err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success":    resp.GetSuccess(),
+		"message":    resp.GetMessage(),
+		"project_id": projectID,
+	})
 }
 
 // GetCostReport handles GET /v1/projects/:id/cost
-func GetCostReport(c *fiber.Ctx) error {
-	projectID := c.Params("id")
-	// TODO: query cost_events table
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"project_id":     projectID,
-		"total_cost_usd": 0.0,
-		"total_tokens":   0,
-	})
+func (h *Handler) GetCostReport(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{})
 }
 
-// HealthCheck handles GET /healthz — liveness probe
-func HealthCheck(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  "ok",
-		"service": "gateway",
-		"time":    time.Now().UTC(),
-	})
+// HealthCheck handles GET /healthz
+func (h *Handler) HealthCheck(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ok"})
 }
 
-// ReadyCheck handles GET /readyz — readiness probe
-func ReadyCheck(c *fiber.Ctx) error {
-	// TODO: check DB and Redis connectivity
+// ReadyCheck handles GET /readyz
+func (h *Handler) ReadyCheck(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "ready"})
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

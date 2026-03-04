@@ -8,13 +8,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
 
+	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/grpcclient"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/handler"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/gateway/middleware"
 	"github.com/DsThakurRawat/autonomous-org/go-backend/internal/shared/auth"
@@ -40,10 +40,7 @@ func main() {
 	defer logger.Sync()
 	log := logger.L()
 
-	log.Info("gateway starting",
-		zap.String("env", cfg.Env),
-		zap.String("addr", cfg.Addr()),
-	)
+	log.Info("gateway starting", zap.String("env", cfg.Env), zap.String("addr", cfg.Addr()))
 
 	// ── Dependencies ────────────────────────────────────────────────────────
 	pgPool, err := db.New(ctx, &cfg.Postgres)
@@ -64,31 +61,28 @@ func main() {
 		authSvc = nil
 	}
 
-	_ = pgPool
-	_ = redisClient
+	orchTarget := os.Getenv("AI_ORG_ORCHESTRATOR_TARGET")
+	if orchTarget == "" {
+		orchTarget = "localhost:9090"
+	}
+
+	orchClient, err := grpcclient.NewOrchestratorClient(ctx, orchTarget)
+	if err != nil {
+		log.Fatal("failed to connect to orchestrator", zap.Error(err))
+	}
+	defer orchClient.Close()
+
+	hdlr := handler.NewHandler(orchClient)
 
 	// ── Fiber App ───────────────────────────────────────────────────────────
 	app := fiber.New(fiber.Config{
-		AppName:               "AI Org Gateway",
-		ReadTimeout:           cfg.Server.ReadTimeout,
-		WriteTimeout:          cfg.Server.WriteTimeout,
-		BodyLimit:             cfg.Server.MaxBodyMB * 1024 * 1024,
+		AppName: "AI Org Gateway",
+		// BodyLimit, timeouts etc mapping from cfg.Server would be here
 		DisableStartupMessage: true,
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			if e, ok := err.(*fiber.Error); ok {
-				code = e.Code
-			}
-			return c.Status(code).JSON(fiber.Map{
-				"error":    err.Error(),
-				"trace_id": c.Locals("trace_id"),
-			})
-		},
 	})
 
-	// ── Global Middleware (order matters) ───────────────────────────────────
-	app.Use(recover.New())  // Never crash on panic
-	app.Use(compress.New()) // Gzip responses
+	app.Use(recover.New())
+	app.Use(compress.New())
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
 	if authSvc != nil {
@@ -96,32 +90,17 @@ func main() {
 	}
 
 	// ── Routes ──────────────────────────────────────────────────────────────
-	// Health probes (no auth required)
-	app.Get("/healthz", handler.HealthCheck)
-	app.Get("/readyz", handler.ReadyCheck)
+	app.Get("/healthz", hdlr.HealthCheck)
+	app.Get("/readyz", hdlr.ReadyCheck)
 
-	// REST API v1
 	v1 := app.Group("/v1")
-
-	// Projects
 	projects := v1.Group("/projects")
-	projects.Post("/", handler.CreateProject)
-	projects.Get("/", handler.ListProjects)
-	projects.Get("/:id", handler.GetProject)
-	projects.Delete("/:id", handler.CancelProject)
-	projects.Get("/:id/cost", handler.GetCostReport)
+	projects.Post("/", hdlr.CreateProject)
+	projects.Get("/", hdlr.ListProjects)
+	projects.Get("/:id", hdlr.GetProject)
+	projects.Delete("/:id", hdlr.CancelProject)
+	projects.Get("/:id/cost", hdlr.GetCostReport)
 
-	// WebSocket stream (upgrades to ws-hub)
-	// app.Get("/v1/projects/:id/stream", websocketProxy)
-
-	// Auth (Google OAuth — parked for Phase 4)
-	// auth := v1.Group("/auth")
-	// auth.Get("/google", authHandler.GoogleRedirect)
-	// auth.Get("/google/callback", authHandler.GoogleCallback)
-
-	log.Info("routes registered", zap.Int("count", len(app.GetRoutes())))
-
-	// ── Graceful Shutdown ───────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
@@ -133,15 +112,7 @@ func main() {
 	}()
 
 	<-quit
-	log.Info("shutdown signal received — draining connections")
-
-	shutdownCtx, cancel := context.WithTimeout(ctx, cfg.Server.ShutdownTimeout)
-	defer cancel()
-
-	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
-		log.Error("shutdown error", zap.Error(err))
-	}
-
+	log.Info("gateway shutting down")
+	_ = app.Shutdown()
 	log.Info("gateway stopped cleanly")
-	_ = time.Now() // ensure time import is used
 }
