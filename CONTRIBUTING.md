@@ -63,8 +63,8 @@ lang(rust): add fast cosine similarity service
 
 | Branch | Type | Status | Description |
 |--------|------|--------|-------------|
-| `master` | — | ✅ Stable | Production base |
-| `chore/git-workflow-setup` | chore | 🔨 Active | Git conventions + .gitignore |
+| `master` | — | Stable | Production base |
+| `chore/git-workflow-setup` | chore | Active | Git conventions + .gitignore |
 
 > **Update this table every time you create or merge a branch.**
 
