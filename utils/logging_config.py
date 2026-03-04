@@ -43,3 +43,9 @@ def configure_logging(level: str = "INFO", json_output: bool = False):
         stream=sys.stdout,
         level=getattr(logging, level.upper(), logging.INFO),
     )
+
+
+# Convenience alias used by agent_service.py and other entry points
+def setup_logging(level: str = "INFO", json_output: bool = False):
+    """Alias for configure_logging — preferred entry-point name."""
+    configure_logging(level=level, json_output=json_output)
