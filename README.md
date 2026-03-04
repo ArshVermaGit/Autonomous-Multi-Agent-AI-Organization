@@ -25,68 +25,100 @@ This framework is explicitly designed to handle complex business requirements, c
 
 ```mermaid
 flowchart TB
-    User([User]) -->|Business Idea| API[FastAPI Gateway]
-    
-    API --> Orch[Orchestrator]
-    
-    subgraph Event Bus [Kafka Message Bus]
-        direction LR
-        K_Task[Tasks Topic]
-        K_Result[Results Topic]
-        K_Event[Events Topic]
-    end
-    
-    Orch -->|Publish Task| K_Task
-    
-    subgraph MoE Engine [Rust MoE Scoring]
-        Router[Task Router]
-    end
-    
-    K_Task --> Router
-    
-    subgraph Agents [Autonomous Organization]
-        CEO[CEO Agent\nStrategy]
-        CTO[CTO Agent\nArchitecture]
-        ENG[Engineer Agent\nCode Generation]
-        QA[QA Agent\nTesting & Linting]
-        OPS[DevOps Agent\nDeployment]
-        FIN[Finance Agent\nCost Ledgering]
-    end
-    
-    Router -->|Route to Expert| Agents
-    
-    Agents -->|Publish Result| K_Result
-    K_Result --> Orch
-    
-    Agents -->|Publish Status| K_Event
-    K_Event --> Dash[Next.js Dashboard]
-    
-    subgraph Tools [ Execution Layer ]
-        Docker[Docker Sandboxing]
-        Git[Git Operations]
-    end
-    
-    ENG --> Tools
-    QA --> Tools
-    OPS --> Git
-    
-    subgraph Persistence [ Persistent Memory ]
-        DB[(Artifact Store)]
-        Log[(Decision Log)]
-    end
-    
-    Agents --> DB
-    Agents --> Log
+    User(["User\nBusiness Idea"]) -->|"HTTP POST / WebSocket"| API
 
-    style User fill:#fff,stroke:#333,stroke-width:2px
-    style API fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style Orch fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style Event Bus fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style MoE Engine fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style Agents fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
-    style Tools fill:#eceff1,stroke:#37474f,stroke-width:2px
-    style Persistence fill:#e0f7fa,stroke:#006064,stroke-width:2px
+    API["FastAPI Gateway\nREST + WebSocket"]
+    API -->|"Validated Request"| Orch
+
+    subgraph Orchestrator ["Orchestrator"]
+        direction TB
+        Planner["planner.py\nDAG Generation"]
+        Graph["task_graph.py\nExecution Order"]
+        Dispatcher["kafka_dispatcher.py\nTask Publisher"]
+        Planner --> Graph --> Dispatcher
+    end
+
+    Dispatcher -->|"Publish Tasks"| K_Task
+
+    subgraph EventBus ["Kafka Event Bus"]
+        direction LR
+        K_Task["ai-org-tasks\nTask Assignments"]
+        K_Result["ai-org-results\nAgent Outputs"]
+        K_Event["ai-org-events\nLive Status"]
+    end
+
+    K_Task -->|"Consumed for Scoring"| MoE
+
+    subgraph MoE ["Rust MoE Scoring Engine"]
+        direction TB
+        Scorer["scoring.py\nExpert Weights"]
+        Router["router.py\nSub-ms Routing"]
+        Scorer --> Router
+    end
+
+    Router -->|"Route to Best-Fit Expert"| Agents
+
+    subgraph Agents ["Autonomous Agent Organization"]
+        direction LR
+        CEO["CEO Agent\nMarket Research & Scoping"]
+        CTO["CTO Agent\nSystem Design & Schema"]
+        ENG["Engineer Agent\nCode Generation & Git"]
+        QA["QA Agent\nPytest, Flake8, Bandit"]
+        OPS["DevOps Agent\nDocker, K8s, Terraform"]
+        FIN["Finance Agent\nToken Cost Tracking"]
+    end
+
+    Agents -->|"Publish Result"| K_Result
+    K_Result -->|"DAG Node Update"| Orchestrator
+
+    Agents -->|"Publish Status"| K_Event
+    K_Event -->|"WebSocket Feed"| Dash
+
+    subgraph Tools ["Execution Layer"]
+        direction LR
+        Docker["Docker Sandbox\npython:3.11-slim, no-network"]
+        Git["Git Tool\nBranch, Commit, Push"]
+        Linter["Linter Tool\nFlake8 / Bandit"]
+        Skills["Skills Registry\nDynamic Dependency Resolver"]
+    end
+
+    ENG --> Docker
+    ENG --> Git
+    QA --> Docker
+    QA --> Linter
+    OPS --> Git
+    ENG --> Skills
+    QA --> Skills
+
+    subgraph Memory ["Persistent Memory"]
+        direction LR
+        ArtStore[("Artifact Store\nCode & Docs")]
+        DecLog[("Decision Log\nImmutable Record")]
+        CostLedger[("Cost Ledger\nToken Tracking")]
+    end
+
+    Agents --> ArtStore
+    Agents --> DecLog
+    FIN --> CostLedger
+
+    Dash["Next.js Dashboard\nTask DAG · Live Feed · Cost Meter"]
+    Obs["Observability\nPrometheus · Structlog · Traces"]
+    Agents --> Obs
+    Orchestrator --> Obs
+
+    style User         fill:#f9fafb,stroke:#374151,stroke-width:2px
+    style API          fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style Orchestrator fill:#fef3c7,stroke:#d97706,stroke-width:2px
+    style EventBus     fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style MoE          fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+    style Agents       fill:#ede9fe,stroke:#7c3aed,stroke-width:2px
+    style Tools        fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    style Memory       fill:#ccfbf1,stroke:#0d9488,stroke-width:2px
+    style Dash         fill:#ffe4e6,stroke:#e11d48,stroke-width:2px
+    style Obs          fill:#fef3c7,stroke:#d97706,stroke-width:2px
 ```
+
+> **Interactive Reference:** For the full step-by-step lifecycle breakdown and component directory map, open [`architecture_flowchart.html`](./architecture_flowchart.html) in your browser.
 
 ## Core Subsystems
 
