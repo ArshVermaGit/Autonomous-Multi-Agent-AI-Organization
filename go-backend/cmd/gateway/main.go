@@ -73,6 +73,7 @@ func main() {
 	defer orchClient.Close()
 
 	hdlr := handler.NewHandler(orchClient)
+	settingsHdlr := handler.NewSettingsHandler(pgPool)
 
 	// ── Fiber App ───────────────────────────────────────────────────────────
 	app := fiber.New(fiber.Config{
@@ -100,6 +101,15 @@ func main() {
 	projects.Get("/:id", hdlr.GetProject)
 	projects.Delete("/:id", hdlr.CancelProject)
 	projects.Get("/:id/cost", hdlr.GetCostReport)
+
+	// Settings — LLM key management + agent model prefs
+	settings := v1.Group("/settings")
+	settings.Post("/keys", settingsHdlr.AddKey)
+	settings.Get("/keys", settingsHdlr.ListKeys)
+	settings.Delete("/keys/:id", settingsHdlr.DeleteKey)
+	settings.Post("/agent-prefs", settingsHdlr.SetAgentPref)
+	settings.Get("/agent-prefs", settingsHdlr.GetAgentPrefs)
+	settings.Delete("/agent-prefs/:role", settingsHdlr.DeleteAgentPref)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

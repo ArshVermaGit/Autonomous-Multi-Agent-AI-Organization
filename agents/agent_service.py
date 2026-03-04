@@ -25,6 +25,7 @@ from typing import Dict, Any, Optional
 
 import structlog
 
+from agents.model_registry import get_default
 from messaging.kafka_client import KafkaProducerClient, KafkaConsumerClient
 from messaging.schemas import TaskMessage, ResultMessage, EventMessage
 from messaging.topics import KafkaTopics
@@ -45,31 +46,60 @@ AGENT_REGISTRY: Dict[str, tuple] = {
 }
 
 
-def _load_llm_client():
-    """Try to load an LLM client; return None if no API key configured."""
-    openai_key = os.getenv("OPENAI_API_KEY")
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+def _build_llm_client(llm_config: dict, agent_role: str):
+    """
+    Build the correct LLM client from the llm_config injected into the
+    Kafka TaskMessage by the Go Orchestrator. Falls back to model_registry
+    defaults + server env vars if no config is provided.
 
-    if openai_key and openai_key.startswith("sk-"):
-        try:
+    Returns: (client, model_name, provider)
+    """
+    # Fill in defaults from model_registry if the payload is missing config
+    defaults = get_default(agent_role)
+    provider  = llm_config.get("provider")  or defaults["provider"]
+    api_key   = llm_config.get("api_key")   or ""
+    model     = llm_config.get("model")     or defaults["model"]
+
+    # If no user key was injected, try server env vars as fallback
+    if not api_key:
+        import os
+        env_map = {
+            "openai":    "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "google":    "GOOGLE_API_KEY",
+        }
+        api_key = os.getenv(env_map.get(provider, "GOOGLE_API_KEY"), "")
+
+    if not api_key:
+        logger.warning("No API key found — running in mock mode", provider=provider)
+        return None, model, provider
+
+    try:
+        if provider == "openai":
             from openai import OpenAI
-            client = OpenAI(api_key=openai_key)
-            logger.info("OpenAI client loaded", model="gpt-4-turbo-preview")
-            return client
-        except ImportError:
-            logger.warning("openai package not installed")
+            client = OpenAI(api_key=api_key)
+            logger.info("OpenAI client built", model=model)
+            return client, model, provider
 
-    if anthropic_key and anthropic_key.startswith("sk-ant-"):
-        try:
+        elif provider == "anthropic":
             import anthropic
-            client = anthropic.Anthropic(api_key=anthropic_key)
-            logger.info("Anthropic client loaded", model="claude-3-sonnet-20240229")
-            return client
-        except ImportError:
-            logger.warning("anthropic package not installed")
+            client = anthropic.Anthropic(api_key=api_key)
+            logger.info("Anthropic client built", model=model)
+            return client, model, provider
 
-    logger.warning("No LLM API key found — agent will run in mock mode")
-    return None
+        elif provider == "google":
+            from google import genai
+            client = genai.Client(api_key=api_key)
+            logger.info("Gemini client built", model=model)
+            return client, model, provider
+
+        else:
+            logger.warning("Unknown provider, mock mode", provider=provider)
+            return None, model, provider
+
+    except ImportError as e:
+        logger.error("LLM package not installed", provider=provider, error=str(e))
+        return None, model, provider
 
 
 def _load_agent(role: str, llm_client=None):
@@ -118,21 +148,15 @@ class AgentMicroservice:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, self._shutdown)
 
-        # Load LLM + agent
-        llm_client    = _load_llm_client()
-        self.agent    = _load_agent(self.role, llm_client)
+        # Agent is loaded once — LLM client is resolved per-task from Kafka payload
+        self.agent    = _load_agent(self.role)
         self.producer = KafkaProducerClient()
         self.consumer = KafkaConsumerClient(
             topics    = [self.topic],
             group_id  = self.group_id,
         )
 
-        logger.info(
-            "Agent ready",
-            role         = self.role,
-            topic        = self.topic,
-            llm_mode     = "live" if llm_client else "mock",
-        )
+        logger.info("Agent ready", role=self.role, topic=self.topic, mode="per-task-key")
 
         heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         await self._consume_loop()
@@ -198,12 +222,32 @@ class AgentMicroservice:
         """Execute one task and publish the result."""
         start_ms = time.time() * 1000
 
+        # ── Resolve LLM client per-task from Kafka payload ────────────────
+        # The Go Orchestrator injects the resolved llm_config based on the
+        # user's Settings preferences (or platform defaults as fallback).
+        llm_config = task_msg.input_data.get("llm_config", {})
+        llm_client, model_name, provider = _build_llm_client(llm_config, self.role)
+
+        # Patch the resolved client onto the agent instance for this task only.
+        # This is safe — agent pods process tasks sequentially per role.
+        self.agent.llm_client = llm_client
+        self.agent.model_name = model_name
+        self.agent.provider   = provider
+
+        logger.info(
+            "Task LLM resolved",
+            role     = self.role,
+            provider = provider,
+            model    = model_name,
+            mode     = "live" if llm_client else "mock",
+        )
+
         # Emit task_start event
         await self._emit_event(
             project_id = task_msg.project_id,
             event_type = "task_start",
-            message    = f"[{self.role}] Starting: {task_msg.task_name}",
-            data       = {"task_id": task_msg.task_id},
+            message    = f"[{self.role}] Starting: {task_msg.task_name} ({provider}/{model_name})",
+            data       = {"task_id": task_msg.task_id, "provider": provider, "model": model_name},
             level      = "info",
             trace_id   = task_msg.trace_id,
         )
@@ -212,19 +256,20 @@ class AgentMicroservice:
             # Build a minimal task object the agent understands
             class _TaskProxy:
                 """Lightweight proxy so agent code sees task.name, task.id, etc."""
-                id         = task_msg.task_id
-                name       = task_msg.task_name
-                task_type  = task_msg.task_type
-                agent_role = task_msg.agent_role
-                input_data = task_msg.input_data
+                id          = task_msg.task_id
+                name        = task_msg.task_name
+                task_type   = task_msg.task_type
+                agent_role  = task_msg.agent_role
+                input_data  = task_msg.input_data
                 retry_count = task_msg.retry_count
                 max_retries = task_msg.max_retries
-                status     = "running"
+                status      = "running"
 
             output = await self.agent.execute_task(
                 task    = _TaskProxy(),
                 context = _build_minimal_context(task_msg),
             )
+
 
             duration_ms = int(time.time() * 1000 - start_ms)
             self._tasks_done += 1

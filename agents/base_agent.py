@@ -45,14 +45,16 @@ class BaseAgent(ABC):
         self,
         llm_client=None,
         tools: Dict[str, Callable] = None,
-        model_name: str = "gpt-4-turbo-preview",
+        model_name: str = None,
+        provider: str = "google",
     ):
         self.llm_client = llm_client
         self.tools = tools or {}
+        self.provider = provider
         self.model_name = model_name
         self._scratchpad: List[Dict[str, str]] = []
         self._iteration_count = 0
-        logger.info("Agent initialized", role=self.ROLE)
+        logger.info("Agent initialized", role=self.ROLE, provider=provider, model=model_name)
 
     @property
     @abstractmethod
@@ -79,17 +81,16 @@ class BaseAgent(ABC):
         response_format: Optional[str] = None,  # "json_object" | None
     ) -> str:
         """
-        Unified LLM call with retry and fallback.
-        Supports OpenAI, Anthropic, and AWS Bedrock (Amazon Nova).
+        Unified LLM call that dispatches to OpenAI, Anthropic, or Google
+        based on self.provider, which is set from the Kafka TaskMessage llm_config.
+        Falls back to mock mode if no llm_client is configured.
         """
         if self.llm_client is None:
-            # Demo/mock mode
             return self._mock_llm_response(messages)
 
         try:
-            # Try primary LLM
-            if hasattr(self.llm_client, "models"):
-                # Gemini API
+            # ── Google Gemini ──────────────────────────────────────────────
+            if self.provider == "google":
                 system_prompt = self.system_prompt
                 config = types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -117,10 +118,48 @@ class BaseAgent(ABC):
                     config=config,
                 )
                 return response.text
+
+            # ── OpenAI ────────────────────────────────────────────────────
+            elif self.provider == "openai":
+                kwargs = {
+                    "model":       self.model_name,
+                    "messages":    messages,
+                    "temperature": temperature,
+                    "max_tokens":  max_tokens,
+                }
+                if response_format == "json_object":
+                    kwargs["response_format"] = {"type": "json_object"}
+
+                response = await asyncio.to_thread(
+                    self.llm_client.chat.completions.create, **kwargs
+                )
+                return response.choices[0].message.content
+
+            # ── Anthropic Claude ──────────────────────────────────────────
+            elif self.provider == "anthropic":
+                # Extract system prompt separately — Anthropic uses it as a top-level param
+                system_content = self.system_prompt
+                anthropic_messages = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in messages
+                    if m["role"] != "system"
+                ]
+
+                response = await asyncio.to_thread(
+                    self.llm_client.messages.create,
+                    model=self.model_name,
+                    max_tokens=max_tokens,
+                    system=system_content,
+                    messages=anthropic_messages,
+                )
+                return response.content[0].text
+
             else:
+                logger.warning("Unknown provider, falling back to mock", provider=self.provider)
                 return self._mock_llm_response(messages)
+
         except Exception as e:
-            logger.error("LLM call failed", error=str(e), agent=self.ROLE)
+            logger.error("LLM call failed", error=str(e), agent=self.ROLE, provider=self.provider)
             raise
 
     def _mock_llm_response(self, messages: List[Dict[str, str]]) -> str:
