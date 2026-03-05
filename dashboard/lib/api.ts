@@ -77,47 +77,73 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
     // Health
     health: () =>
-        apiFetch<{ status: string; uptime_seconds: number }>('/health'),
+        apiFetch<{ status: string; uptime_seconds: number }>('/healthz'),
 
-    // Projects
+    // Projects — Go Gateway: /v1/projects
     listProjects: () =>
-        apiFetch<Project[]>('/api/projects'),
+        apiFetch<Project[]>('/v1/projects'),
 
     getProject: (id: string) =>
-        apiFetch<Project>(`/api/projects/${id}`),
+        apiFetch<Project>(`/v1/projects/${id}`),
 
     createProject: (data: CreateProjectRequest) =>
-        apiFetch<Project>('/api/projects', {
+        apiFetch<Project>('/v1/projects', {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify({
+                idea: data.idea,
+                budget: { max_cost_usd: data.budget_usd },
+                name: data.name ?? '',
+                // user_id and tenant_id come from the JWT in the Go Gateway middleware
+            }),
         }),
 
-    cancelProject: (id: string) =>
-        apiFetch<void>(`/api/projects/${id}/cancel`, { method: 'POST' }),
+    cancelProject: (id: string, reason = 'User cancelled') =>
+        apiFetch<void>(`/v1/projects/${id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason }),
+        }),
 
-    // Tasks / DAG
+    // Tasks / DAG — Go Gateway: /v1/projects/:id/tasks
     getProjectTasks: (projectId: string) =>
-        apiFetch<TaskNode[]>(`/api/projects/${projectId}/tasks`),
+        apiFetch<TaskNode[]>(`/v1/projects/${projectId}/tasks`),
 
-    // Agents
-    listAgents: () =>
-        apiFetch<AgentStatus[]>('/api/agents'),
-
-    // Metrics
-    getMetrics: () =>
-        apiFetch<SystemMetrics>('/api/metrics'),
-
-    // Artifacts
-    getArtifacts: (projectId: string) =>
-        apiFetch<{ name: string; type: string; size_bytes: number; created_at: string }[]>(
-            `/api/projects/${projectId}/artifacts`
+    // Cost report — Go Gateway: /v1/projects/:id/cost
+    getProjectCost: (projectId: string) =>
+        apiFetch<{ total_usd: number; by_agent: Record<string, number> }>(
+            `/v1/projects/${projectId}/cost`
         ),
 
-    // MoE routing stats
-    getMoeStats: () =>
-        apiFetch<{ total_decisions: number; by_type: Record<string, number>; by_expert: Record<string, number> }>(
-            '/api/moe/stats'
-        ),
+    // Settings — LLM key management (Go Gateway: /v1/settings/keys)
+    listKeys: () =>
+        apiFetch<{ keys: unknown[]; total: number }>('/v1/settings/keys'),
+
+    addKey: (provider: string, apiKey: string, label = 'default') =>
+        apiFetch<unknown>('/v1/settings/keys', {
+            method: 'POST',
+            body: JSON.stringify({ provider, api_key: apiKey, label }),
+        }),
+
+    deleteKey: (id: string) =>
+        apiFetch<void>(`/v1/settings/keys/${id}`, { method: 'DELETE' }),
+
+    // Settings — Agent model preferences (Go Gateway: /v1/settings/agent-prefs)
+    getAgentPrefs: () =>
+        apiFetch<{ prefs: unknown[] }>('/v1/settings/agent-prefs'),
+
+    setAgentPref: (payload: {
+        agent_role: string;
+        provider: string;
+        model_name: string;
+        key_id?: string;
+        model_params?: Record<string, unknown>;
+    }) =>
+        apiFetch<unknown>('/v1/settings/agent-prefs', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+
+    resetAgentPref: (role: string) =>
+        apiFetch<void>(`/v1/settings/agent-prefs/${role}`, { method: 'DELETE' }),
 }
 
 // ── Utility helpers ───────────────────────────────────────────────────

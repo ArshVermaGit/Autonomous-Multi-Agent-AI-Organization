@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { api, Project, AgentStatus, SystemMetrics, TaskNode, AGENT_EMOJI } from '@/lib/api'
+import { api, Project, TaskNode, AGENT_EMOJI } from '@/lib/api'
 import AgentFeed from '@/components/AgentFeed'
 import DagViewer from '@/components/DagViewer'
 import CostMeter from '@/components/CostMeter'
@@ -10,8 +10,9 @@ import MetricsPanel from '@/components/MetricsPanel'
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
-    Braces, Github
+    Braces, Github, Settings
 } from 'lucide-react'
+import Link from 'next/link'
 import { clsx } from 'clsx'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -174,8 +175,6 @@ function ProjectItem({ project, isSelected, onClick }: {
 // ── Main Page ─────────────────────────────────────────────────────
 export default function DashboardPage() {
     const [projects, setProjects] = useState<Project[]>([])
-    const [agents, setAgents] = useState<AgentStatus[]>([])
-    const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
     const [tasks, setTasks] = useState<TaskNode[]>([])
     const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     const [showModal, setShowModal] = useState(false)
@@ -189,14 +188,10 @@ export default function DashboardPage() {
     // ── Data fetching ───────────────────────────────────────────────
     const fetchAll = useCallback(async () => {
         try {
-            const [ps, as, ms] = await Promise.allSettled([
+            const [ps] = await Promise.allSettled([
                 api.listProjects(),
-                api.listAgents(),
-                api.getMetrics(),
             ])
             if (ps.status === 'fulfilled') setProjects(ps.value)
-            if (as.status === 'fulfilled') setAgents(as.value)
-            if (ms.status === 'fulfilled') setMetrics(ms.value)
             setApiOnline(true)
         } catch {
             setApiOnline(false)
@@ -276,6 +271,10 @@ export default function DashboardPage() {
                         <Github size={13} />
                     </a>
 
+                    <Link href="/settings" className="btn-ghost p-1.5" title="Settings">
+                        <Settings size={13} />
+                    </Link>
+
                     <button onClick={() => setShowModal(true)} className="btn-primary">
                         <Plus size={14} />
                         New Project
@@ -318,7 +317,7 @@ export default function DashboardPage() {
                 {/* Main content */}
                 <main className="flex-1 overflow-y-auto p-5 space-y-5">
                     {/* Metrics strip */}
-                    <MetricsPanel metrics={metrics} agents={agents} isLoading={isLoading} />
+                    <MetricsPanel metrics={null} agents={[]} isLoading={isLoading} />
 
                     {/* Middle row: DAG + Cost */}
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
