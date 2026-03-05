@@ -10,10 +10,11 @@ You type a business idea. The system:
 
 1. **CEO Agent** — Researches the market, defines scope and requirements
 2. **CTO Agent** — Designs the system architecture and database schema
-3. **Engineer Agent** — Writes the code, commits to Git, builds Docker images
-4. **QA Agent** — Runs Pytest, Flake8, Bandit — rejects broken code
-5. **DevOps Agent** — Generates Terraform, Kubernetes manifests, CI/CD pipelines
-6. **Finance Agent** — Tracks token usage and enforces budget limits
+3. **Frontend Engineer Agent** — Writes React/TypeScript/CSS code and responsive layouts
+4. **Backend Engineer Agent** — Writes Python/Go APIs, database schemas, and logic
+5. **QA Agent** — Runs tests, detects edge cases and bugs
+6. **DevOps Agent** — Generates Terraform, Kubernetes manifests, CI/CD pipelines
+7. **Finance Agent** — Tracks token usage and enforces budget limits
 
 Every agent runs asynchronously over Kafka. You watch it all happen live in the dashboard.
 
@@ -46,7 +47,8 @@ flowchart TB
     subgraph Agents ["Python AI Agents"]
         CEO["CEO · GPT-4o"]
         CTO["CTO · Gemini 2.5 Pro"]
-        ENG["Engineer · Claude 3.5 Sonnet"]
+        ENG_FE["Engineer (FE) · Claude 3.5 Sonnet"]
+        ENG_BE["Engineer (BE) · Claude 3.5 Sonnet"]
         QA["QA · Claude 3.5 Sonnet"]
         OPS["DevOps · Claude Haiku"]
         FIN["Finance · GPT-4o Mini"]
@@ -108,7 +110,7 @@ openssl rand -hex 32
 # Paste output as KEY_ENCRYPTION_KEY= in .env.local
 # Also add at least one LLM key: OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
 
-# 4. Start the full stack (Go services + all 6 agents + dashboard + infra)
+# 4. Start the full stack (Go services + all 7 agents + dashboard + infra)
 docker-compose -f go-backend/deploy/docker-compose.local.yml --env-file .env.local up --build
 
 # 5. Open the dashboard — no login prompt
@@ -275,11 +277,14 @@ Access at `http://localhost:3000`
 
 ## Project Structure
 
-```
+```text
 ├── go-backend/               Go microservices
 │   ├── cmd/
 │   │   ├── gateway/          HTTP API (Fiber) — auth, routing, websockets
+│   │   ├── health-monitor/   System health monitoring
+│   │   ├── metrics-svc/      Metrics tracking service
 │   │   ├── orchestrator/     gRPC server — DAG planning, Kafka dispatch
+│   │   ├── tenant-svc/       Tenant management
 │   │   └── ws-hub/           WebSocket server — Redis pub/sub
 │   ├── internal/
 │   │   ├── gateway/handler/  HTTP handlers (projects, tasks, settings, OAuth)
@@ -297,7 +302,7 @@ Access at `http://localhost:3000`
 │   ├── model_registry.py     Default model configs per agent role
 │   ├── ceo_agent.py
 │   ├── cto_agent.py
-│   ├── engineer_agent.py
+│   ├── engineer_agent.py     (Handles FE and BE roles)
 │   ├── qa_agent.py
 │   ├── devops_agent.py
 │   └── finance_agent.py
@@ -311,6 +316,19 @@ Access at `http://localhost:3000`
 ├── infra/
 │   ├── helm/                 Kubernetes Helm charts
 │   └── terraform/            AWS infrastructure (ECS, RDS, Route53)
+├── api/                      API definitions and specs
+├── infrastructure/           IaC files and definitions
+├── k8s/                      Additional Kubernetes manifests
+├── messaging/                Kafka schemas and clients
+├── monitoring/               Monitoring configurations
+├── observability/            Tracing and metrics
+├── orchestrator/             Python orchestrator logic
+├── output/                   Log/artifact outputs
+├── tests/                    Test scripts
+├── tools/                    Shared agent tools
+├── utils/                    Shared utility functions
+├── docker-compose.yml        Root compose file (SaaS)
+├── docker-compose.observability.yml Metrics and Observability
 ├── .env.example              SaaS mode env template
 ├── .env.local.example        Local mode env template
 ├── requirements.txt          Python dependencies
