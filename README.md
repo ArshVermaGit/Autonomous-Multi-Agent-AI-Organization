@@ -1,10 +1,17 @@
 # Autonomous Multi-Agent AI Organization
 
+[![Go](https://img.shields.io/badge/go-1.22-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
+[![Python](https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+
 > A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — with a real-time web dashboard and zero-friction local setup.
 
 ---
 
-## What It Does
+## 🚀 What It Does
 
 You type a business idea. The system:
 
@@ -20,9 +27,10 @@ Every agent runs asynchronously over Kafka. You watch it all happen live in the 
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#f8fafc', 'primaryBorderColor': '#cbd5e1', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'clusterBkg': '#ffffff', 'clusterBorder': '#cbd5e1', 'edgeLabelBackground': '#ffffff'}}}%%
 flowchart TB
     User(["User — Business Idea"]) -->|"HTTPS POST"| GW
 
@@ -70,7 +78,7 @@ flowchart TB
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -89,7 +97,7 @@ flowchart TB
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
 
 ### Option A — Local / Self-Hosted (No login required)
 
@@ -160,7 +168,7 @@ Users land on a login page → **Sign in with Google** → redirected to their d
 
 ---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 ### Local Mode (`.env.local`)
 
@@ -188,7 +196,7 @@ All local vars above, plus:
 
 ---
 
-## API Routes (Go Gateway — port 8080)
+## 🌐 API Routes (Go Gateway — port 8080)
 
 | Method | Path | Description |
 |---|---|---|
@@ -211,7 +219,7 @@ All local vars above, plus:
 
 ---
 
-## LLM Configuration
+## 🧠 LLM Configuration
 
 ### Default Models (no configuration needed)
 
@@ -242,7 +250,7 @@ The resolution order per task:
 
 ---
 
-## Database Migrations
+## 🗄️ Database Migrations
 
 Migrations run automatically in the local Docker Compose stack.
 
@@ -263,7 +271,7 @@ migrate -path go-backend/migrations -database "$DATABASE_URL" down 1
 
 ---
 
-## Dashboard
+## 📊 Dashboard
 
 Access at `http://localhost:3000`
 
@@ -275,7 +283,7 @@ Access at `http://localhost:3000`
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```text
 ├── go-backend/               Go microservices
@@ -337,7 +345,7 @@ Access at `http://localhost:3000`
 
 ---
 
-## Kubernetes Deployment
+## ☸️ Kubernetes Deployment
 
 ```bash
 cd infra/helm/ai-org
@@ -347,7 +355,7 @@ helm install ai-org . --namespace ai-org-system --create-namespace \
   --set gateway.env.GOOGLE_CLIENT_SECRET=<your-secret>
 ```
 
-## Terraform (AWS)
+## ☁️ Terraform (AWS)
 
 ```bash
 cd infra/terraform
@@ -360,7 +368,7 @@ Provisions: ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, AL
 
 ---
 
-## Security
+## 🔒 Security
 
 - **Encrypted API keys** — AES-256-GCM. Raw keys never written to disk.
 - **`key_hint`** — Only last 4 chars of a key are stored unencrypted (safe for UI display).
@@ -372,7 +380,7 @@ Provisions: ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, AL
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
@@ -389,6 +397,6 @@ python3 -m py_compile agents/*.py
 
 ---
 
-## License
+## 📄 License
 
 MIT — see `LICENSE` for details.
