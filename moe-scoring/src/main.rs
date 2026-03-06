@@ -209,7 +209,13 @@ async fn handle_batch_route(
     }).collect();
 
     let total_ms = started.elapsed().as_secs_f64() * 1000.0;
-    (StatusCode::OK, JsonResponse(BatchRouteResponse { decisions, total_ms: round2(total_ms) }))
+    (
+        StatusCode::OK,
+        JsonResponse(BatchRouteResponse {
+            decisions,
+            total_ms: round2(total_ms),
+        }),
+    )
 }
 
 async fn handle_vectorize(
@@ -218,7 +224,11 @@ async fn handle_vectorize(
     let task_type = body["task_type"].as_str().unwrap_or("");
     let context   = body["context"].as_str().unwrap_or("");
     let vector    = task_type_to_vector(task_type, context);
-    JsonResponse(serde_json::json!({ "task_type": task_type, "vector": vector, "dim": vector.len() }))
+    JsonResponse(serde_json::json!({
+        "task_type": task_type,
+        "vector": vector,
+        "dim": vector.len(),
+    }))
 }
 
 async fn handle_health(State(state): State<AppState>) -> impl IntoResponse {

@@ -128,7 +128,8 @@ pub fn default_experts() -> HashMap<String, Expert> {
             vector,
             skills: skills.iter().map(|s| s.to_string()).collect(),
         })
-    }).collect()
+    })
+    .collect()
 }
 
 // ── Direct Task-Type → Expert Mapping (O(1) lookup) ──────────────────────────
@@ -137,10 +138,9 @@ pub fn direct_expert_for_task_type(task_type: &str) -> Option<&'static str> {
     match task_type.to_lowercase().as_str() {
         "strategy" | "business_plan" | "market_analysis" | "mvp_definition" => Some("CEO"),
         "architecture" | "tech_stack_selection" | "api_design" | "database_design" => Some("CTO"),
-        "backend_development"
-        | "api_implementation"
-        | "database_setup"
-        | "auth_implementation" => Some("Engineer_Backend"),
+        "backend_development" | "api_implementation" | "database_setup" | "auth_implementation" => {
+            Some("Engineer_Backend")
+        }
         "frontend_development" | "ui_implementation" | "component_development" => {
             Some("Engineer_Frontend")
         }
