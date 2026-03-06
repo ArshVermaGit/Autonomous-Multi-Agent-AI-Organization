@@ -167,14 +167,36 @@ func RateLimiter(maxRPS int) fiber.Handler {
 
 	return func(c *fiber.Ctx) error {
 		// Use user_id from JWT if available, fall back to IP
-		key := c.Locals("user_id").(string)
+		key, _ := c.Locals("user_id").(string)
 		if key == "" {
 			key = c.IP()
 		}
 
-		_ = key // TODO: implement actual token bucket with sync.Mutex
-		_ = store
+		mu.Lock()
+		defer mu.Unlock()
 
+		now := time.Now()
+		e, exists := store[key]
+		if !exists {
+			e = &entry{tokens: float64(maxRPS), lastCheck: now}
+			store[key] = e
+		}
+
+		// Refill tokens based on time elapsed
+		elapsed := now.Sub(e.lastCheck)
+		e.tokens += elapsed.Seconds() * float64(maxRPS)
+		if e.tokens > float64(maxRPS) {
+			e.tokens = float64(maxRPS)
+		}
+		e.lastCheck = now
+
+		if e.tokens < 1 {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "rate limit exceeded",
+			})
+		}
+
+		e.tokens--
 		return c.Next()
 	}
 }

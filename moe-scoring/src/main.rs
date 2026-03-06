@@ -286,7 +286,8 @@ async fn main() {
     let addr = format!("0.0.0.0:{}", port);
     info!("MoE scoring service starting on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(&addr).await
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
         .expect("Failed to bind address");
 
     info!(port = port, "MoE scoring service ready");

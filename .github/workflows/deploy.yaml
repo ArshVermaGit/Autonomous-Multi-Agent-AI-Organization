@@ -61,7 +61,7 @@ jobs:
           KAFKA_MOCK: "true"
           ENVIRONMENT: "test"
         run: |
-          pytest tests/unit/ \
+          PYTHONPATH=$GITHUB_WORKSPACE pytest tests/unit/ \
             --tb=short \
             --cov=. \
             --cov-report=xml \
