@@ -3,8 +3,24 @@ name: AI Organization — CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    paths:
+      - "agents/**"
+      - "orchestrator/**"
+      - "tools/**"
+      - "moe/**"
+      - "tests/**"
+      - ".github/workflows/deploy.yaml"
+      - "requirements.txt"
   pull_request:
     branches: [main]
+    paths:
+      - "agents/**"
+      - "orchestrator/**"
+      - "tools/**"
+      - "moe/**"
+      - "tests/**"
+      - ".github/workflows/deploy.yaml"
+      - "requirements.txt"
 
 env:
   AWS_REGION: us-east-1
