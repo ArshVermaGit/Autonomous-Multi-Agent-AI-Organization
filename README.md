@@ -1,6 +1,6 @@
 # Autonomous Multi-Agent AI Organization
 
-[![Go](https://img.shields.io/badge/go-1.22-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
+[![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
