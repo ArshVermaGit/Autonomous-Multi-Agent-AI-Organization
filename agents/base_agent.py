@@ -156,6 +156,30 @@ class BaseAgent(ABC):
                 )
                 return response.content[0].text
 
+            # ── Amazon Bedrock (Nova) ──────────────────────────────────────────────────
+            elif self.provider == "bedrock":
+                # Nova models use the Bedrock Converse API format
+                bedrock_messages = [
+                    {"role": m["role"], "content": [{"text": m["content"]}]}
+                    for m in messages
+                    if m["role"] != "system"
+                ]
+                
+                kwargs = {
+                    "modelId": self.model_name,
+                    "messages": bedrock_messages,
+                    "system": [{"text": self.system_prompt}],
+                    "inferenceConfig": {
+                        "temperature": temperature,
+                        "maxTokens": max_tokens,
+                    }
+                }
+
+                response = await asyncio.to_thread(
+                    self.llm_client.converse, **kwargs
+                )
+                return response['output']['message']['content'][0]['text']
+
             else:
                 logger.warning(
                     "Unknown provider, falling back to mock", provider=self.provider

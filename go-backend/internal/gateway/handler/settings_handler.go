@@ -34,7 +34,7 @@ func NewSettingsHandler(pool *db.Pool) *SettingsHandler {
 // ── Request / Response types ──────────────────────────────────────────────────
 
 type AddKeyRequest struct {
-	Provider string `json:"provider" validate:"required,oneof=openai anthropic google"`
+	Provider string `json:"provider" validate:"required,oneof=bedrock openai anthropic google"`
 	APIKey   string `json:"api_key"  validate:"required,min=20"`
 	Label    string `json:"label"`
 }
@@ -50,7 +50,7 @@ type KeyResponse struct {
 
 type SetAgentPrefRequest struct {
 	AgentRole string         `json:"agent_role"  validate:"required"`
-	Provider  string         `json:"provider"    validate:"required,oneof=openai anthropic google"`
+	Provider  string         `json:"provider"    validate:"required,oneof=bedrock openai anthropic google"`
 	ModelName string         `json:"model_name"  validate:"required"`
 	KeyID     string         `json:"key_id"` // optional — specific key to use
 	Params    map[string]any `json:"model_params"`

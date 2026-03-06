@@ -19,7 +19,7 @@ CREATE TABLE user_llm_keys (
     user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
     -- Which LLM company this key belongs to
-    provider    TEXT        NOT NULL CHECK (provider IN ('openai', 'anthropic', 'google')),
+    provider    TEXT        NOT NULL CHECK (provider IN ('bedrock', 'openai', 'anthropic', 'google')),
 
     -- Human-readable label set by the user in the UI (e.g. "Personal", "Company")
     key_label   TEXT        NOT NULL DEFAULT 'default',
@@ -73,7 +73,7 @@ CREATE TABLE agent_model_prefs (
                 )),
 
     -- Which provider to use for this agent role
-    provider    TEXT        NOT NULL CHECK (provider IN ('openai', 'anthropic', 'google')),
+    provider    TEXT        NOT NULL CHECK (provider IN ('bedrock', 'openai', 'anthropic', 'google')),
 
     -- Model identifier — must be a valid model for the selected provider
     -- e.g. "gpt-4o", "claude-3-5-sonnet-latest", "gemini-2.5-pro"
