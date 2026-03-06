@@ -161,9 +161,7 @@ func RateLimiter(maxRPS int) fiber.Handler {
 	// NOTE: In production, replace with Redis sliding window (see redisclient.SlidingWindowLimit)
 	// This in-memory version works per-pod and is fine for initial deployment.
 	store := make(map[string]*entry)
-	var mu = new(struct{ sync.Mutex })
-
-	_ = mu // placeholder until sync is imported
+	var mu sync.Mutex
 
 	return func(c *fiber.Ctx) error {
 		// Use user_id from JWT if available, fall back to IP

@@ -1,7 +1,7 @@
+mod metrics;
 mod models;
 mod scorer;
 mod vectorizer;
-mod metrics;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,8 +19,8 @@ use tower_http::trace::TraceLayer;
 use tracing::info;
 
 use models::{
-    BatchRouteRequest, BatchRouteResponse,
-    Expert, ExpertStats, HealthResponse, RouteRequest, RouteResponse,
+    BatchRouteRequest, BatchRouteResponse, Expert, ExpertStats, HealthResponse, RouteRequest,
+    RouteResponse,
 };
 use scorer::{rank_experts, should_use_ensemble, ENSEMBLE_THRESHOLD};
 use vectorizer::{default_experts, direct_expert_for_task_type, task_type_to_vector};
