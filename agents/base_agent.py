@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 from google.genai import types
 import structlog
+from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
 
@@ -62,6 +63,8 @@ class BaseAgent(ABC):
     ):
         self.llm_client = llm_client
         self.tools = tools or {}
+        if "collaboration" not in self.tools:
+            self.tools["collaboration"] = CollaborationTool().run
         self.provider = provider
         self.model_name = model_name
         self._scratchpad: List[Dict[str, str]] = []
