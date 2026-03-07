@@ -130,18 +130,42 @@ func main() {
 	settings.Get("/agent-prefs", settingsHdlr.GetAgentPrefs)
 	settings.Delete("/agent-prefs/:role", settingsHdlr.DeleteAgentPref)
 
+	// ── Graceful Shutdown ──────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		log.Info("http server listening", zap.String("addr", cfg.Addr()))
-		if err := app.Listen(cfg.Addr()); err != nil {
+		if err := app.Listen(cfg.Addr()); err != nil && err != fiber.ErrServiceUnavailable {
 			log.Error("server error", zap.Error(err))
 		}
 	}()
 
 	<-quit
-	log.Info("gateway shutting down")
-	_ = app.Shutdown()
+	log.Info("gateway shutting down gracefully...")
+
+	// Create a context with timeout for shutdown
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	// Shutdown order: HTTP -> gRPC -> DB -> Redis
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
+		log.Error("fiber shutdown failed", zap.Error(err))
+	} else {
+		log.Info("http server stopped")
+	}
+
+	if err := orchClient.Close(); err != nil {
+		log.Error("orchestrator client close failed", zap.Error(err))
+	}
+
+	if err := pgPool.Close(); err != nil {
+		log.Error("postgres pool close failed", zap.Error(err))
+	}
+
+	if err := redisClient.Close(); err != nil {
+		log.Error("redis client close failed", zap.Error(err))
+	}
+
 	log.Info("gateway stopped cleanly")
 }
