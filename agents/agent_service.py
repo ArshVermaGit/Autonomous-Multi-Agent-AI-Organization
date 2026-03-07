@@ -17,7 +17,6 @@ import asyncio
 import os
 import signal
 import time
-from datetime import datetime, timezone
 import traceback
 from typing import Dict, Any, Optional
 
@@ -212,14 +211,14 @@ class AgentMicroservice:
                 task_msg = TaskMessage(**raw_msg)
             except Exception as e:
                 logger.error(
-                    "Failed to parse TaskMessage", 
-                    error=str(e), 
-                    raw_preview=str(raw_msg)[:500]
+                    "Failed to parse TaskMessage",
+                    error=str(e),
+                    raw_preview=str(raw_msg)[:500],
                 )
                 await self._emit_error_event(
                     project_id=raw_msg.get("project_id", "unknown"),
                     message=f"Agent fallback: Failed to parse task message for {self.role}",
-                    error=str(e)
+                    error=str(e),
                 )
                 continue
 

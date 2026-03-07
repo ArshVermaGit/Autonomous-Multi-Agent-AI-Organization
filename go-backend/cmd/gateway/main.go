@@ -136,7 +136,7 @@ func main() {
 
 	go func() {
 		log.Info("http server listening", zap.String("addr", cfg.Addr()))
-		if err := app.Listen(cfg.Addr()); err != nil && err != fiber.ErrServiceUnavailable {
+		if err := app.Listen(cfg.Addr()); err != nil {
 			log.Error("server error", zap.Error(err))
 		}
 	}()
@@ -155,17 +155,7 @@ func main() {
 		log.Info("http server stopped")
 	}
 
-	if err := orchClient.Close(); err != nil {
-		log.Error("orchestrator client close failed", zap.Error(err))
-	}
-
-	if err := pgPool.Close(); err != nil {
-		log.Error("postgres pool close failed", zap.Error(err))
-	}
-
-	if err := redisClient.Close(); err != nil {
-		log.Error("redis client close failed", zap.Error(err))
-	}
+	// Dependencies will be closed via deferred calls when main() returns.
 
 	log.Info("gateway stopped cleanly")
 }

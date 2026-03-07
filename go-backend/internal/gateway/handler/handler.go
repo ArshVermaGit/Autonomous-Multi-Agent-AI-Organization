@@ -195,7 +195,12 @@ func (h *Handler) GetProject(c *fiber.Ctx) error {
 	var p ProjectListItem
 	err := h.db.QueryRow(context.Background(), `
 		SELECT
-			p.id, p.idea, p.status,
+			p.id, p.idea, 
+			CASE 
+				WHEN p.status = 'active' THEN 'processing'
+				WHEN p.status = 'done' THEN 'completed'
+				ELSE p.status 
+			END AS status,
 			COALESCE(p.budget_usd, 0) AS budget_usd,
 			COALESCE((SELECT SUM(cost_usd) FROM cost_events ce WHERE ce.project_id = p.id), 0) AS spent_usd,
 			COUNT(t.id) AS tasks_total,

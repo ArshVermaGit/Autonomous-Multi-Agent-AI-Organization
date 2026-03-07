@@ -8,7 +8,7 @@ import asyncio
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 from google.genai import types
 import structlog
 
