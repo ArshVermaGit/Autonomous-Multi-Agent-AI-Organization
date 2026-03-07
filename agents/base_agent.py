@@ -15,6 +15,18 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+def _clean_json_response(text: str) -> str:
+    """Strip Markdown formatting (e.g. ```json ... ```) from LLM output."""
+    text = text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
+
+
 class AgentToolCall:
     """Represents a tool invocation request from an agent."""
 
@@ -141,6 +153,9 @@ class BaseAgent(ABC):
             elif self.provider == "anthropic":
                 # Extract system prompt separately — Anthropic uses it as a top-level param
                 system_content = self.system_prompt
+                if response_format == "json_object":
+                    system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
+
                 anthropic_messages = [
                     {"role": m["role"], "content": m["content"]}
                     for m in messages
@@ -154,11 +169,18 @@ class BaseAgent(ABC):
                     system=system_content,
                     messages=anthropic_messages,
                 )
-                return response.content[0].text
+                text = response.content[0].text
+                if response_format == "json_object":
+                    text = _clean_json_response(text)
+                return text
 
             # ── Amazon Bedrock (Nova) ──────────────────────────────────────────────────
             elif self.provider == "bedrock":
                 # Nova models use the Bedrock Converse API format
+                system_content = self.system_prompt
+                if response_format == "json_object":
+                    system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
+
                 bedrock_messages = [
                     {"role": m["role"], "content": [{"text": m["content"]}]}
                     for m in messages
@@ -168,7 +190,7 @@ class BaseAgent(ABC):
                 kwargs = {
                     "modelId": self.model_name,
                     "messages": bedrock_messages,
-                    "system": [{"text": self.system_prompt}],
+                    "system": [{"text": system_content}],
                     "inferenceConfig": {
                         "temperature": temperature,
                         "maxTokens": max_tokens,
@@ -178,7 +200,10 @@ class BaseAgent(ABC):
                 response = await asyncio.to_thread(
                     self.llm_client.converse, **kwargs
                 )
-                return response['output']['message']['content'][0]['text']
+                text = response['output']['message']['content'][0]['text']
+                if response_format == "json_object":
+                    text = _clean_json_response(text)
+                return text
 
             else:
                 logger.warning(

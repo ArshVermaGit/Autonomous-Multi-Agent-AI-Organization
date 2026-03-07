@@ -1,4 +1,4 @@
-# Amazon Nova AI Hackathon Roadmap: Project "Aden-Nova"
+# Amazon Nova AI Hackathon Roadmap: Project "Proximus-Nova"
 
 ## 1. Hackathon & Amazon Nova Overview
 **Goal:** Transform the existing Autonomous Multi-Agent AI Organization into an elite, head-to-head competitor to platforms like Aden-Hive and Devin, powered exclusively by the new **Amazon Nova** foundation models.
