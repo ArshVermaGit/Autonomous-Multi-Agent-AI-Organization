@@ -10,7 +10,7 @@
 [![Frontend CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/frontend-ci.yml)
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
-> A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — with a real-time web dashboard and zero-friction local setup.
+> A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
 
 ---
 
@@ -56,13 +56,13 @@ flowchart TB
     Kafka --> Agents
 
     subgraph Agents ["Python AI Agents"]
-        CEO["CEO · GPT-4o"]
-        CTO["CTO · Gemini 2.5 Pro"]
-        ENG_FE["Engineer (FE) · Claude 3.5 Sonnet"]
-        ENG_BE["Engineer (BE) · Claude 3.5 Sonnet"]
-        QA["QA · Claude 3.5 Sonnet"]
-        OPS["DevOps · Claude Haiku"]
-        FIN["Finance · GPT-4o Mini"]
+        CEO["CEO · Nova 2 Pro"]
+        CTO["CTO · Nova 2 Pro"]
+        ENG_FE["Engineer (FE) · Nova 2 Lite"]
+        ENG_BE["Engineer (BE) · Nova 2 Lite"]
+        QA["QA · Nova 2 Lite"]
+        OPS["DevOps · Nova 2 Lite"]
+        FIN["Finance · Nova Micro"]
     end
 
     Agents -->|"Results"| R
@@ -83,20 +83,20 @@ flowchart TB
 
 ## 🛠 Tech Stack
 
-| Layer             | Technology                                |
-| ----------------- | ----------------------------------------- |
-| **API Gateway**   | Go 1.22 · Fiber v2                        |
-| **Orchestrator**  | Go · gRPC · DAG engine                    |
-| **WebSocket Hub** | Go · Redis Pub/Sub                        |
-| **AI Agents**     | Python 3.11 · OpenAI / Anthropic / Google |
-| **Event Bus**     | Apache Kafka · ZooKeeper                  |
-| **Database**      | PostgreSQL 15 · pgcrypto                  |
-| **Cache**         | Redis 7                                   |
-| **Dashboard**     | Next.js 14 · TypeScript                   |
-| **MoE Routing**   | Rust (sub-ms expert scoring)              |
-| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                 |
-| **Auth (Local)**  | None — straight to dashboard              |
-| **Infra**         | Docker Compose · Helm · Terraform         |
+| Layer             | Technology                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| **API Gateway**   | Go 1.22 · Fiber v2                                         |
+| **Orchestrator**  | Go · gRPC · DAG engine                                     |
+| **WebSocket Hub** | Go · Redis Pub/Sub                                         |
+| **AI Agents**     | Python 3.11 · Amazon Bedrock / OpenAI / Anthropic / Google |
+| **Event Bus**     | Apache Kafka · ZooKeeper                                   |
+| **Database**      | PostgreSQL 15 · pgcrypto                                   |
+| **Cache**         | Redis 7                                                    |
+| **Dashboard**     | Next.js 14 · TypeScript                                    |
+| **MoE Routing**   | Rust (sub-ms expert scoring)                               |
+| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                                  |
+| **Auth (Local)**  | None — straight to dashboard                               |
+| **Infra**         | Docker Compose · Helm · Terraform                          |
 
 ---
 
@@ -119,7 +119,8 @@ cp .env.local.example .env.local
 # 3. Generate an encryption key and add it to .env.local
 openssl rand -hex 32
 # Paste output as KEY_ENCRYPTION_KEY= in .env.local
-# Also add at least one LLM key: OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY
+# Add your AWS Sandbox Credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)
+# You can also add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_API_KEY for fallback models.
 
 # 4. Start the full stack (Go services + all 7 agents + dashboard + infra)
 docker-compose -f go-backend/deploy/docker-compose.local.yml --env-file .env.local up --build
@@ -158,7 +159,7 @@ openssl rand -hex 32   # → paste as KEY_ENCRYPTION_KEY in .env
 #    Create at: https://console.cloud.google.com/apis/credentials
 #    Authorized redirect URI: https://yourdomain.com/auth/google/callback
 
-# 6. Fill in LLM API keys in .env (platform-wide defaults)
+# 6. Fill in AWS API keys and any fallback LLM API keys in .env (platform-wide defaults)
 
 # 7. Start
 docker-compose -f go-backend/deploy/docker-compose.yml up --build
@@ -175,13 +176,16 @@ Users land on a login page → **Sign in with Google** → redirected to their d
 
 ### Local Mode (`.env.local`)
 
-| Variable             | Required     | Description                                    |
-| -------------------- | ------------ | ---------------------------------------------- |
-| `AUTH_DISABLED`      | ✅           | Set to `true` — skips all auth                 |
-| `KEY_ENCRYPTION_KEY` | ✅           | 64-char hex (32 bytes). `openssl rand -hex 32` |
-| `OPENAI_API_KEY`     | one of these | Your OpenAI, Anthropic, or Google API key      |
-| `ANTHROPIC_API_KEY`  | one of these |                                                |
-| `GOOGLE_API_KEY`     | one of these |                                                |
+| Variable                | Required     | Description                                    |
+| ----------------------- | ------------ | ---------------------------------------------- |
+| `AUTH_DISABLED`         | ✅           | Set to `true` — skips all auth                 |
+| `KEY_ENCRYPTION_KEY`    | ✅           | 64-char hex (32 bytes). `openssl rand -hex 32` |
+| `AWS_ACCESS_KEY_ID`     | one of these | Your AWS IAM Access Key for Bedrock            |
+| `AWS_SECRET_ACCESS_KEY` | one of these | Your AWS IAM Secret Key                        |
+| `AWS_REGION`            | one of these | AWS Region (e.g. `us-east-1`)                  |
+| `OPENAI_API_KEY`        | one of these | Fallback: OpenAI API key                       |
+| `ANTHROPIC_API_KEY`     | one of these | Fallback: Anthropic API key                    |
+| `GOOGLE_API_KEY`        | one of these | Fallback: Google (Gemini) API key              |
 
 ### SaaS Mode (`.env`)
 
@@ -224,17 +228,19 @@ All local vars above, plus:
 
 ## 🧠 LLM Configuration
 
-### Default Models (no configuration needed)
+### Default Models (Current Configuration)
 
-| Agent         | Provider  | Model                      |
-| ------------- | --------- | -------------------------- |
-| CEO           | OpenAI    | `gpt-4o`                   |
-| CTO           | Google    | `gemini-2.5-pro-exp-03-25` |
-| Engineer (BE) | Anthropic | `claude-3-5-sonnet-latest` |
-| Engineer (FE) | Anthropic | `claude-3-5-sonnet-latest` |
-| QA            | Anthropic | `claude-3-5-sonnet-latest` |
-| DevOps        | Anthropic | `claude-haiku-20240307`    |
-| Finance       | OpenAI    | `gpt-4o-mini`              |
+By default, the entire system is powered by Amazon Nova models. However, the orchestrator and agent layers are designed to be provider-agnostic. Later on, specific agents can be dynamically swapped via the UI to use specialized models (e.g., using Gemini for a highly visual Frontend Engineer task, or Claude for complex Backend QA).
+
+| Agent         | Default Provider | Default Model              | Supported Alternatives |
+| ------------- | ---------------- | -------------------------- | ---------------------- |
+| CEO           | Bedrock          | `amazon.nova-pro-v1:0`     | OpenAI, Anthropic, Google |
+| CTO           | Bedrock          | `amazon.nova-pro-v1:0`     | OpenAI, Anthropic, Google |
+| Engineer (BE) | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic, OpenAI      |
+| Engineer (FE) | Bedrock          | `amazon.nova-lite-v1:0`    | Google (Gemini)        |
+| QA            | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic, OpenAI      |
+| DevOps        | Bedrock          | `amazon.nova-lite-v1:0`    | Anthropic              |
+| Finance       | Bedrock          | `amazon.nova-micro-v1:0`   | OpenAI, Google         |
 
 ### Per-User Key Management
 
@@ -248,7 +254,7 @@ The resolution order per task:
 
 1. User's agent-specific preference → their stored key
 2. User's stored key for the provider (first valid)
-3. Server environment variable (`OPENAI_API_KEY`, etc.)
+3. Server environment variable (`AWS_ACCESS_KEY_ID`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.)
 4. Error if none available
 
 ---

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Provider = 'openai' | 'anthropic' | 'google';
+type Provider = 'bedrock' | 'openai' | 'anthropic' | 'google';
 
 interface LLMKey {
     id: string;
@@ -26,6 +26,7 @@ interface AgentPref {
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
+    bedrock: 'Amazon Bedrock (Nova)',
     openai: 'OpenAI',
     anthropic: 'Anthropic',
     google: 'Google Gemini',
@@ -42,6 +43,7 @@ const AGENT_LABELS: Record<string, string> = {
 };
 
 const MODEL_OPTIONS: Record<Provider, string[]> = {
+    bedrock: ['amazon.nova-pro-v1:0', 'amazon.nova-lite-v1:0', 'amazon.nova-micro-v1:0'],
     openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     anthropic: ['claude-3-5-sonnet-latest', 'claude-3-haiku-20240307', 'claude-3-opus-latest'],
     google: ['gemini-2.5-pro-exp-03-25', 'gemini-2.0-flash', 'gemini-1.5-pro'],
@@ -129,7 +131,7 @@ function LLMKeysSection() {
         await load();
     };
 
-    const providers: Provider[] = ['openai', 'anthropic', 'google'];
+    const providers: Provider[] = ['bedrock', 'openai', 'anthropic', 'google'];
 
     return (
         <Card>
@@ -383,11 +385,12 @@ export default function SettingsPage() {
                             title="Prompting References"
                             subtitle="Official best practices for writing effective system prompts for each provider."
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {[
-                                { provider: 'OpenAI', model: 'GPT-4o', url: 'https://platform.openai.com/docs/guides/prompt-engineering', note: 'CEO, Finance agents' },
-                                { provider: 'Google', model: 'Gemini 2.5 Pro', url: 'https://ai.google.dev/gemini-api/docs/prompting-strategies', note: 'CTO, Architect agents' },
-                                { provider: 'Anthropic', model: 'Claude 3.5', url: 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview', note: 'Engineer, QA, DevOps agents' },
+                                { provider: 'Amazon Bedrock', model: 'Nova Pro', url: 'https://docs.aws.amazon.com/nova/latest/userguide/prompt-engineering.html', note: 'All Default Agents' },
+                                { provider: 'OpenAI', model: 'GPT-4o', url: 'https://platform.openai.com/docs/guides/prompt-engineering', note: 'Fallback CEO, Finance agents' },
+                                { provider: 'Google', model: 'Gemini 2.5 Pro', url: 'https://ai.google.dev/gemini-api/docs/prompting-strategies', note: 'Fallback CTO, FE agents' },
+                                { provider: 'Anthropic', model: 'Claude 3.5', url: 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview', note: 'Fallback Engineer, QA agents' },
                             ].map(g => (
                                 <a
                                     key={g.provider}

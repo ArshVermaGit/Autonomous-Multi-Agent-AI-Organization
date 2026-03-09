@@ -37,32 +37,32 @@ type LLMConfig struct {
 // These are used when a user has not configured their own preference.
 var AgentDefaults = map[string]LLMConfig{
 	"CEO": {
-		Provider:  "openai",
-		ModelName: "gpt-4o",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-pro-v1:0",
 	},
 	"CTO": {
-		Provider:  "google",
-		ModelName: "gemini-2.5-pro-exp-03-25",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-pro-v1:0",
 	},
 	"Engineer_Backend": {
-		Provider:  "anthropic",
-		ModelName: "claude-3-5-sonnet-latest",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-lite-v1:0",
 	},
 	"Engineer_Frontend": {
-		Provider:  "anthropic",
-		ModelName: "claude-3-5-sonnet-latest",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-lite-v1:0",
 	},
 	"QA": {
-		Provider:  "anthropic",
-		ModelName: "claude-3-5-sonnet-latest",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-lite-v1:0",
 	},
 	"DevOps": {
-		Provider:  "anthropic",
-		ModelName: "claude-3-haiku-20240307",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-lite-v1:0",
 	},
 	"Finance": {
-		Provider:  "openai",
-		ModelName: "gpt-4o-mini",
+		Provider:  "bedrock",
+		ModelName: "amazon.nova-micro-v1:0",
 	},
 }
 
@@ -179,7 +179,7 @@ func (r *Resolver) ResolveForAgent(ctx context.Context, userID, agentRole string
 
 	def := AgentDefaults[agentRole]
 	if def.Provider == "" {
-		def = LLMConfig{Provider: "google", ModelName: "gemini-2.5-pro-exp-03-25"}
+		def = LLMConfig{Provider: "bedrock", ModelName: "amazon.nova-pro-v1:0"}
 	}
 
 	// 1. Check agent_model_prefs

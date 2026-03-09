@@ -58,7 +58,7 @@ def _build_llm_client(llm_config: dict, agent_role: str):
     model = llm_config.get("model") or defaults["model"]
 
     # If no user key was injected, try server env vars as fallback
-    if not api_key:
+    if not api_key and provider != "bedrock":
         import os
 
         env_map = {
@@ -68,7 +68,7 @@ def _build_llm_client(llm_config: dict, agent_role: str):
         }
         api_key = os.getenv(env_map.get(provider, "GOOGLE_API_KEY"), "")
 
-    if not api_key:
+    if not api_key and provider != "bedrock":
         logger.warning("No API key found — running in mock mode", provider=provider)
         return None, model, provider
 
@@ -92,6 +92,16 @@ def _build_llm_client(llm_config: dict, agent_role: str):
 
             client = genai.Client(api_key=api_key)
             logger.info("Gemini client built", model=model)
+            return client, model, provider
+
+        elif provider == "bedrock":
+            import boto3
+            import os
+
+            # boto3 automatically uses AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from the environment
+            region = os.getenv("AWS_REGION", "us-east-1")
+            client = boto3.client("bedrock-runtime", region_name=region)
+            logger.info("Bedrock client built", model=model, region=region)
             return client, model, provider
 
         else:
