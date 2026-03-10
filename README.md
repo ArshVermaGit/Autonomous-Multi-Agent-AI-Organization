@@ -11,6 +11,12 @@
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
 > A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
+>
+> 🚀 **New Feature Updates:**
+> - Complete default adoption of **Amazon Nova** for all specialized agents.
+> - **Proximus-Nova CLI** launcher for fast terminal setup, management and cleanup.
+> - Premium animated **Next.js** terminal-based dashboard UI.
+> - Real-time decoupled task tracking and metrics logging directly to **PostgreSQL**.
 
 ---
 

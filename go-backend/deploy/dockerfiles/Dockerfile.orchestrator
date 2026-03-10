@@ -12,11 +12,16 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/orchestrator ./cmd/orchestrator/
 
 # Final Stage
-FROM scratch
+FROM alpine:latest
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Install runtime dependencies for health checks and HTTPS
+RUN apk add --no-cache ca-certificates wget
+
+# Copy the static binary
 COPY --from=builder /go/bin/orchestrator /orchestrator
 
 EXPOSE 9090
+EXPOSE 9091
 
 ENTRYPOINT ["/orchestrator"]
+

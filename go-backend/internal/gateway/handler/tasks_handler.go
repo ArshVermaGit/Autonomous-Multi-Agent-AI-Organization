@@ -125,11 +125,8 @@ func (h *TasksHandler) GetProjectTasks(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"project_id": projectID,
-		"tasks":      result,
-		"total":      len(result),
-	})
+	// Return array directly to match frontend api.ts
+	return c.Status(fiber.StatusOK).JSON(result)
 }
 
 // GetProjectEvents handles GET /v1/projects/:id/events

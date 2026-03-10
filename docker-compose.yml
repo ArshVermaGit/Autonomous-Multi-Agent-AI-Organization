@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ═══════════════════════════════════════════════════════════════════════
 # 🏢 Autonomous Multi-Agent AI Organization
 # One-command startup: docker compose up -d
@@ -16,19 +14,30 @@ version: "3.9"
 #   Dashboard:    nextjs-dashboard (port 3000)
 # ═══════════════════════════════════════════════════════════════════════
 
+x-agent-env: &agent-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+  KAFKA_MOCK: "false"
+  REDIS_URL: redis://redis:6379/0
+  DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+
+x-go-env: &go-env
+  AI_ORG_ENV: development
+  AI_ORG_POSTGRES__DSN: postgres://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg?sslmode=disable
+  AI_ORG_REDIS__ADDR: redis:6379
+  AI_ORG_KAFKA__BROKERS: kafka:29092
+  AI_ORG_OBSERVABILITY__LOG_LEVEL: debug
+  AI_ORG_OBSERVABILITY__OTLP_ENDPOINT: http://jaeger:4317
+  AUTH_DISABLED: "true"
+
 x-agent-defaults: &agent-defaults
   build:
     context: .
     dockerfile: Dockerfile.agent
   restart: unless-stopped
   env_file: .env
-  environment:
-    KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-    KAFKA_MOCK: "false"
-    REDIS_URL: redis://redis:6379/0
-    DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
-    OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
-    ENVIRONMENT: ${ENVIRONMENT:-development}
+  environment: *agent-env
   depends_on:
     postgres:
       condition: service_healthy
@@ -58,7 +67,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aiorg_secret_2026}
       POSTGRES_DB: aiorg
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -161,21 +170,15 @@ services:
 
   orchestrator:
     build:
-      context: .
-      dockerfile: Dockerfile.orchestrator
+      context: ./go-backend
+      dockerfile: deploy/dockerfiles/Dockerfile.orchestrator
     restart: unless-stopped
     env_file: .env
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      KAFKA_MOCK: "false"
-      REDIS_URL: redis://redis:6379/0
-      DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      PROMETHEUS_PORT: "9090"
-    ports:
-      - "${ORCHESTRATOR_PORT:-8081}:8081"
-      - "9099:9090" # Prometheus metrics
+      <<: *go-env
+      AI_ORG_SERVER__PORT: 9091
+    # ports:
+    #   - "9090:9090" # gRPC — kept internal-only to avoid host conflict with Prometheus
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,39 +189,56 @@ services:
     volumes:
       - ./output:/app/output
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8081/health" ]
-      interval: 20s
-      timeout: 10s
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 30s
+    networks:
+      - ai-org-net
+
+  ws-hub:
+    build:
+      context: ./go-backend
+      dockerfile: deploy/dockerfiles/Dockerfile.ws-hub
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *go-env
+      AI_ORG_SERVER__PORT: 8081
+    ports:
+      - "8082:8081"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - ai-org-net
 
   api-gateway:
     build:
-      context: .
-      dockerfile: Dockerfile.orchestrator
+      context: ./go-backend
+      dockerfile: deploy/dockerfiles/Dockerfile.gateway
     restart: unless-stopped
-    command: uvicorn api.main:app --host 0.0.0.0 --port 8080 --workers 2
     env_file: .env
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      REDIS_URL: redis://redis:6379/0
-      DATABASE_URL: postgresql+asyncpg://aiorg:${POSTGRES_PASSWORD:-aiorg_secret_2026}@postgres:5432/aiorg
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      <<: *go-env
+      AI_ORG_SERVER__PORT: 8080
+      AI_ORG_ORCHESTRATOR_TARGET: orchestrator:9090
       CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
-      ENVIRONMENT: ${ENVIRONMENT:-development}
     ports:
       - "${API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       orchestrator:
         condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
     networks:
       - ai-org-net
 
@@ -229,9 +249,8 @@ services:
   ceo-agent:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: CEO
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.ceo
       KAFKA_CONSUMER_GROUP: ceo-agent-group
       PROMETHEUS_PORT: "9091"
     ports:
@@ -240,20 +259,18 @@ services:
   cto-agent:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: CTO
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.cto
       KAFKA_CONSUMER_GROUP: cto-agent-group
       PROMETHEUS_PORT: "9092"
     ports:
-      - "9092:9092"
+      - "9192:9092"
 
   engineer-backend:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: Engineer_Backend
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.engineer_backend
       KAFKA_CONSUMER_GROUP: engineer-backend-group
       PROMETHEUS_PORT: "9093"
     ports:
@@ -262,9 +279,8 @@ services:
   engineer-frontend:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: Engineer_Frontend
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.engineer_frontend
       KAFKA_CONSUMER_GROUP: engineer-frontend-group
       PROMETHEUS_PORT: "9094"
     ports:
@@ -273,9 +289,8 @@ services:
   qa-agent:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: QA
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.qa
       KAFKA_CONSUMER_GROUP: qa-agent-group
       PROMETHEUS_PORT: "9095"
     ports:
@@ -284,9 +299,8 @@ services:
   devops-agent:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: DevOps
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.devops
       KAFKA_CONSUMER_GROUP: devops-agent-group
       PROMETHEUS_PORT: "9096"
     ports:
@@ -295,9 +309,8 @@ services:
   finance-agent:
     <<: *agent-defaults
     environment:
-      <<: *agent-defaults
+      <<: *agent-env
       AGENT_ROLE: Finance
-      KAFKA_CONSUMER_TOPIC: ai-org.tasks.finance
       KAFKA_CONSUMER_GROUP: finance-agent-group
       PROMETHEUS_PORT: "9097"
     ports:
@@ -311,14 +324,19 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+        NEXT_PUBLIC_WS_URL: ws://localhost:8082
     restart: unless-stopped
     ports:
       - "${DASHBOARD_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8080}
-      NEXT_PUBLIC_WS_URL: ws://localhost:${API_PORT:-8080}
+      NEXT_PUBLIC_WS_URL: ws://localhost:8082
     depends_on:
       api-gateway:
+        condition: service_healthy
+      ws-hub:
         condition: service_healthy
     networks:
       - ai-org-net

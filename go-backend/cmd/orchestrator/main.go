@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -53,19 +54,17 @@ func main() {
 	}
 	defer producer.Close()
 
+	// ── Redis / DB / Producer setup above ──────────────────────────────
+
+	resultHandler := server.NewResultHandler(pgPool, producer)
+
 	// ── Kafka Consumer (for consuming results) ────────────────────────────
 	resultConsumer, err := kafka.NewConsumerGroup(
 		&cfg.Kafka,
 		"orchestrator-results",
 		[]string{cfg.Kafka.TopicResults},
 		func(ctx context.Context, msg kafka.Message) error {
-			log.Info("result received",
-				zap.String("topic", msg.Topic),
-				zap.String("key", msg.Key),
-				zap.Int("value_len", len(msg.Value)),
-			)
-			// TODO: parse ResultMessage → call dag.MarkDone/MarkFailed → dispatch next tasks
-			return nil
+			return resultHandler.Handle(ctx, msg)
 		},
 	)
 	if err != nil {
@@ -97,6 +96,17 @@ func main() {
 		log.Info("orchestrator grpc listening", zap.String("grpc_addr", cfg.GRPCAddr()))
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Error("grpc serve error", zap.Error(err))
+		}
+	}()
+
+	// ── Health Check (HTTP) ──────────────────────────────────────────────
+	healthApp := fiber.New(fiber.Config{DisableStartupMessage: true})
+	healthApp.Get("/healthz", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok", "service": "orchestrator"})
+	})
+	go func() {
+		if err := healthApp.Listen(":9091"); err != nil {
+			log.Error("health check server error", zap.Error(err))
 		}
 	}()
 

@@ -129,6 +129,10 @@ func main() {
 	settings.Post("/agent-prefs", settingsHdlr.SetAgentPref)
 	settings.Get("/agent-prefs", settingsHdlr.GetAgentPrefs)
 	settings.Delete("/agent-prefs/:role", settingsHdlr.DeleteAgentPref)
+	
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok", "service": "gateway"})
+	})
 
 	// ── Graceful Shutdown ──────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

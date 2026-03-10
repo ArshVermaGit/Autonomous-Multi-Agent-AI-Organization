@@ -15,11 +15,11 @@ COPY . .
 # Build standard static binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/gateway ./cmd/gateway/
 
-# Final Stage (scratch for max security and 8MB size)
-FROM scratch
+# Final Stage
+FROM alpine:latest
 
-# Copy CA certificates so HTTPS external calls work
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Install runtime dependencies for health checks and HTTPS
+RUN apk add --no-cache ca-certificates wget
 
 # Copy the static binary
 COPY --from=builder /go/bin/gateway /gateway
@@ -28,3 +28,4 @@ COPY --from=builder /go/bin/gateway /gateway
 EXPOSE 8080
 
 ENTRYPOINT ["/gateway"]
+

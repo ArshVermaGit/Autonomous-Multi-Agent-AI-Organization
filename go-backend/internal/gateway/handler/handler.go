@@ -39,16 +39,23 @@ type BudgetInput struct {
 }
 
 type ProjectResponse struct {
-	ProjectID string    `json:"project_id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	Message   string    `json:"message,omitempty"`
+	ID          string    `json:"id"`
+	ProjectID   string    `json:"project_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	BudgetUSD   float64   `json:"budget_usd"`
+	SpentUSD    float64   `json:"spent_usd"`
+	ProgressPct int       `json:"progress_pct"`
+	CreatedAt   time.Time `json:"created_at"`
+	Message     string    `json:"message,omitempty"`
 }
 
 // ProjectListItem is the read model returned by ListProjects
 type ProjectListItem struct {
 	ID          string     `json:"id"`
-	Idea        string     `json:"idea"`
+	Description string     `json:"description"`
+	Name        string     `json:"name"`
 	Status      string     `json:"status"`
 	BudgetUSD   float64    `json:"budget_usd"`
 	SpentUSD    float64    `json:"spent_usd"`
@@ -113,10 +120,16 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(ProjectResponse{
-		ProjectID: resp.GetProjectId(),
-		Status:    resp.GetStatus().String(),
-		CreatedAt: resp.GetCreatedAt().AsTime(),
-		Message:   "Project queued. Connect to /v1/projects/" + resp.GetProjectId() + "/stream for live updates.",
+		ID:          resp.GetProjectId(),
+		ProjectID:   resp.GetProjectId(), // Support both fields
+		Name:        req.Idea, // Fallback to idea for name
+		Description: req.Idea,
+		Status:      "planning",
+		BudgetUSD:   req.Budget.MaxCostUSD,
+		SpentUSD:    0,
+		ProgressPct: 0,
+		CreatedAt:   resp.GetCreatedAt().AsTime(),
+		Message:     "Project queued. Connect to /ws/projects/" + resp.GetProjectId() + "/stream for live updates.",
 	})
 }
 
@@ -131,7 +144,8 @@ func (h *Handler) ListProjects(c *fiber.Ctx) error {
 	rows, err := h.db.Query(context.Background(), `
 		SELECT
 			p.id,
-			p.idea,
+			p.idea as description,
+			p.idea as name,
 			CASE 
 				WHEN p.status = 'active' THEN 'processing'
 				WHEN p.status = 'done' THEN 'completed'
@@ -161,7 +175,7 @@ func (h *Handler) ListProjects(c *fiber.Ctx) error {
 	for rows.Next() {
 		var p ProjectListItem
 		if err := rows.Scan(
-			&p.ID, &p.Idea, &p.Status,
+			&p.ID, &p.Description, &p.Name, &p.Status,
 			&p.BudgetUSD, &p.SpentUSD,
 			&p.TasksTotal, &p.TasksDone,
 			&p.CreatedAt, &p.CompletedAt,
@@ -178,7 +192,7 @@ func (h *Handler) ListProjects(c *fiber.Ctx) error {
 		projects = []ProjectListItem{}
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"projects": projects, "total": len(projects)})
+	return c.Status(fiber.StatusOK).JSON(projects)
 }
 
 // GetProject handles GET /v1/projects/:id
@@ -195,7 +209,7 @@ func (h *Handler) GetProject(c *fiber.Ctx) error {
 	var p ProjectListItem
 	err := h.db.QueryRow(context.Background(), `
 		SELECT
-			p.id, p.idea, 
+			p.id, p.idea as description, p.idea as name, 
 			CASE 
 				WHEN p.status = 'active' THEN 'processing'
 				WHEN p.status = 'done' THEN 'completed'
@@ -212,7 +226,7 @@ func (h *Handler) GetProject(c *fiber.Ctx) error {
 		GROUP BY p.id`,
 		projectID, userID,
 	).Scan(
-		&p.ID, &p.Idea, &p.Status,
+		&p.ID, &p.Description, &p.Name, &p.Status,
 		&p.BudgetUSD, &p.SpentUSD,
 		&p.TasksTotal, &p.TasksDone,
 		&p.CreatedAt, &p.CompletedAt,

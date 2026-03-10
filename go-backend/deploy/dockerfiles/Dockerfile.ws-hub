@@ -12,11 +12,15 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/ws-hub ./cmd/ws-hub/
 
 # Final Stage
-FROM scratch
+FROM alpine:latest
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Install runtime dependencies for health checks and HTTPS
+RUN apk add --no-cache ca-certificates wget
+
+# Copy the static binary
 COPY --from=builder /go/bin/ws-hub /ws-hub
 
 EXPOSE 8081
 
 ENTRYPOINT ["/ws-hub"]
+

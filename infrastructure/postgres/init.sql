@@ -10,8 +10,11 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";    -- For text search
 -- ── Projects ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projects (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name            VARCHAR(255) NOT NULL,
+    tenant_id       UUID,
+    name            VARCHAR(255),
+    idea            TEXT,
     description     TEXT,
+    user_id         VARCHAR(255),
     status          VARCHAR(50) NOT NULL DEFAULT 'pending',
     budget_usd      DECIMAL(12,4),
     spent_usd       DECIMAL(12,4) DEFAULT 0,
@@ -58,8 +61,8 @@ CREATE TABLE IF NOT EXISTS decisions (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ── Cost Ledger ───────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS cost_entries (
+-- ── Cost Events ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS cost_events (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id      UUID REFERENCES projects(id) ON DELETE CASCADE,
     task_id         UUID REFERENCES tasks(id) ON DELETE SET NULL,
@@ -67,9 +70,9 @@ CREATE TABLE IF NOT EXISTS cost_entries (
     cost_type       VARCHAR(50) NOT NULL,   -- llm | aws | tool
     provider        VARCHAR(100),
     model           VARCHAR(100),
-    amount_usd      DECIMAL(12,6) NOT NULL,
-    tokens_input    INTEGER DEFAULT 0,
-    tokens_output   INTEGER DEFAULT 0,
+    cost_usd        DECIMAL(12,6) NOT NULL,
+    tokens_in       INTEGER DEFAULT 0,
+    tokens_out      INTEGER DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -86,6 +89,28 @@ CREATE TABLE IF NOT EXISTS moe_routing_log (
     latency_ms      DECIMAL(10,2),
     alternatives    JSONB,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── Agent settings ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS agent_api_keys (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         VARCHAR(255) NOT NULL,
+    provider        VARCHAR(50) NOT NULL,
+    key_name        VARCHAR(100),
+    encrypted_key   TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS agent_model_prefs (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         VARCHAR(255) NOT NULL,
+    agent_role      VARCHAR(100) NOT NULL,
+    provider        VARCHAR(50) NOT NULL,
+    model_name      VARCHAR(100) NOT NULL,
+    key_id          UUID REFERENCES agent_api_keys(id) ON DELETE SET NULL,
+    model_params    JSONB DEFAULT '{}',
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, agent_role)
 );
 
 -- ── Artifacts ────────────────────────────────────────────────
@@ -107,7 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_agent_role ON tasks(agent_role);
 CREATE INDEX IF NOT EXISTS idx_decisions_project_id ON decisions(project_id);
-CREATE INDEX IF NOT EXISTS idx_cost_entries_project_id ON cost_entries(project_id);
+CREATE INDEX IF NOT EXISTS idx_cost_events_project_id ON cost_events(project_id);
 CREATE INDEX IF NOT EXISTS idx_moe_log_task_type ON moe_routing_log(task_type);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
 

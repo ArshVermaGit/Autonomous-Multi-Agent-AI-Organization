@@ -123,7 +123,7 @@ func main() {
 		return fiber.ErrUpgradeRequired
 	})
 
-	app.Get("/ws/projects/:id/stream", websocket.New(func(conn *websocket.Conn) {
+	app.Get("/ws/projects/:id/events", websocket.New(func(conn *websocket.Conn) {
 		projectID := conn.Params("id")
 		reg.add(projectID, conn)
 		defer reg.remove(projectID, conn)
@@ -134,6 +134,27 @@ func main() {
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				log.Debug("ws client disconnected", zap.String("project_id", projectID))
+				break
+			}
+		}
+	}))
+
+	// Support for landing page which might use /stream
+	app.Get("/ws/projects/:id/stream", websocket.New(func(conn *websocket.Conn) {
+		projectID := conn.Params("id")
+		reg.add(projectID, conn)
+		defer reg.remove(projectID, conn)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				break
+			}
+		}
+	}))
+
+	app.Get("/ws/events", websocket.New(func(conn *websocket.Conn) {
+		log.Info("global ws client connected")
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
 				break
 			}
 		}
