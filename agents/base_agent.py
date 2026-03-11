@@ -189,7 +189,7 @@ class BaseAgent(ABC):
                     for m in messages
                     if m["role"] != "system"
                 ]
-                
+
                 kwargs = {
                     "modelId": self.model_name,
                     "messages": bedrock_messages,
@@ -197,13 +197,11 @@ class BaseAgent(ABC):
                     "inferenceConfig": {
                         "temperature": temperature,
                         "maxTokens": max_tokens,
-                    }
+                    },
                 }
 
-                response = await asyncio.to_thread(
-                    self.llm_client.converse, **kwargs
-                )
-                text = response['output']['message']['content'][0]['text']
+                response = await asyncio.to_thread(self.llm_client.converse, **kwargs)
+                text = response["output"]["message"]["content"][0]["text"]
                 if response_format == "json_object":
                     text = _clean_json_response(text)
                 return text

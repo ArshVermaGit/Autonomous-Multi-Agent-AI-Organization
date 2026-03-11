@@ -86,7 +86,7 @@ export default function LandingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-gray-300 font-sans selection:bg-emerald-500/30 font-mono flex flex-col">
+        <div className="min-h-screen bg-[#09090b] text-gray-300 font-sans selection:bg-emerald-500/30 flex flex-col">
             {/* ── Top Bar (App-like header) ───────────────────────── */}
             <div className="h-10 w-full shrink-0 bg-[#0d0d12] border-b border-[#27272a] flex items-center justify-between px-4 sticky top-0 z-50">
                 <div className="flex items-center gap-2">
