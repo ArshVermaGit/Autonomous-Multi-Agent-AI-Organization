@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, Key, Settings as SettingsIcon, Shield, Cpu, BookOpen, Check, Trash2, Plus, Loader2 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,23 +70,28 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 function StatusDot({ active }: { active: boolean }) {
     return (
         <span
-            className={`inline-block w-2 h-2 rounded-full mr-2 ${active ? 'bg-emerald-500' : 'bg-neutral-300'}`}
+            className={`inline-block w-2.5 h-2.5 rounded-full mr-2 ${active ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-slate-300'}`}
         />
     );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
     return (
-        <div className="mb-6">
-            <h2 className="text-lg font-semibold text-neutral-900 tracking-tight">{title}</h2>
-            <p className="text-sm text-neutral-500 mt-0.5">{subtitle}</p>
+        <div className="mb-6 flex gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <Icon size={20} />
+            </div>
+            <div>
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
+                <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+            </div>
         </div>
     );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className="bg-white border border-neutral-200 rounded-xl p-6 shadow-sm">
+        <div className={`bg-white border border-slate-200 rounded-2xl p-6 shadow-sm ${className}`}>
             {children}
         </div>
     );
@@ -136,50 +143,53 @@ function LLMKeysSection() {
     return (
         <Card>
             <SectionHeader
+                icon={Key}
                 title="API Keys"
-                subtitle="Store your LLM provider keys. Keys are encrypted with AES-256 before saving. Only the last 4 characters are ever shown."
+                subtitle="Configure your LLM provider keys. Keys are encrypted with AES-256 and never fully exposed."
             />
             {loading ? (
-                <p className="text-sm text-neutral-400">Loading...</p>
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-purple-600" />
+                </div>
             ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {providers.map((provider) => {
                         const providerKeys = keys.filter(k => k.provider === provider);
                         const isAdding = addingFor === provider;
                         return (
-                            <div key={provider} className="border border-neutral-100 rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-neutral-800">
+                            <div key={provider} className={`border rounded-2xl p-5 transition-all ${isAdding ? 'border-purple-300 bg-purple-50/30' : 'border-slate-100 bg-slate-50/30'}`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-slate-800">
                                             {PROVIDER_LABELS[provider]}
                                         </span>
-                                        <span className="text-xs text-neutral-400">
-                                            {providerKeys.length} key{providerKeys.length !== 1 ? 's' : ''}
+                                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                            {providerKeys.length} active key{providerKeys.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                     <button
                                         onClick={() => setAddingFor(isAdding ? null : provider)}
-                                        className="text-xs px-3 py-1.5 rounded-md bg-neutral-900 text-white hover:bg-neutral-700 transition-colors"
+                                        className={`p-2 rounded-xl transition-all ${isAdding ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                     >
-                                        {isAdding ? 'Cancel' : 'Add Key'}
+                                        {isAdding ? <ArrowLeft size={16} /> : <Plus size={16} />}
                                     </button>
                                 </div>
 
                                 {/* Existing keys */}
-                                {providerKeys.length > 0 && (
-                                    <div className="space-y-2 mb-3">
+                                {providerKeys.length > 0 && !isAdding && (
+                                    <div className="space-y-2">
                                         {providerKeys.map(key => (
-                                            <div key={key.id} className="flex items-center justify-between bg-neutral-50 rounded-md px-3 py-2">
-                                                <div className="flex items-center">
+                                            <div key={key.id} className="flex items-center justify-between bg-white border border-slate-100 rounded-xl px-3 py-2.5 shadow-sm">
+                                                <div className="flex items-center min-w-0">
                                                     <StatusDot active={key.is_valid} />
-                                                    <span className="text-sm text-neutral-700 font-mono">{key.key_hint}</span>
-                                                    <span className="text-xs text-neutral-400 ml-2">— {key.label}</span>
+                                                    <span className="text-xs text-slate-700 font-mono truncate">{key.key_hint}</span>
+                                                    <span className="text-[10px] text-slate-400 font-medium ml-2 px-1.5 py-0.5 bg-slate-100 rounded-md uppercase">{key.label}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleDelete(key.id)}
-                                                    className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                                 >
-                                                    Remove
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </div>
                                         ))}
@@ -188,29 +198,41 @@ function LLMKeysSection() {
 
                                 {/* Add key form */}
                                 {isAdding && (
-                                    <div className="space-y-2 mt-2">
-                                        <input
-                                            type="password"
-                                            placeholder="Paste API key"
-                                            value={form.api_key}
-                                            onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
-                                            className="w-full text-sm border border-neutral-200 rounded-md px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Label (e.g. Personal, Work)"
-                                            value={form.label}
-                                            onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                                            className="w-full text-sm border border-neutral-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                                        />
-                                        {error && <p className="text-xs text-red-500">{error}</p>}
+                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Secret Key</label>
+                                            <input
+                                                type="password"
+                                                placeholder="sk-..."
+                                                value={form.api_key}
+                                                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
+                                                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 transition-all"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Label</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Production, Testing"
+                                                value={form.label}
+                                                onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
+                                                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 transition-all"
+                                            />
+                                        </div>
+                                        {error && <p className="text-xs text-red-500 ml-1">{error}</p>}
                                         <button
                                             onClick={() => handleSave(provider)}
                                             disabled={saving}
-                                            className="text-sm px-4 py-2 rounded-md bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-50 transition-colors"
+                                            className="w-full text-sm px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-all font-bold shadow-lg shadow-purple-500/20"
                                         >
-                                            {saving ? 'Saving...' : 'Save Key'}
+                                            {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save API Key'}
                                         </button>
+                                    </div>
+                                )}
+
+                                {!isAdding && providerKeys.length === 0 && (
+                                    <div className="py-2 text-center border-2 border-dashed border-slate-100 rounded-xl">
+                                        <p className="text-[11px] text-slate-400 font-medium">No keys configured</p>
                                     </div>
                                 )}
                             </div>
@@ -268,83 +290,87 @@ function AgentPrefsSection() {
     };
 
     return (
-        <Card>
+        <Card className="overflow-hidden">
             <SectionHeader
+                icon={Cpu}
                 title="Agent Model Preferences"
-                subtitle="Configure which LLM model and API key each agent role uses. Leave on default to use platform-recommended models."
+                subtitle="Override platform defaults by assigning specific models to each agent role."
             />
             {loading ? (
-                <p className="text-sm text-neutral-400">Loading...</p>
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-purple-600" />
+                </div>
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-6">
+                    <table className="w-full text-sm border-collapse">
                         <thead>
-                            <tr className="border-b border-neutral-100">
-                                <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">Agent Role</th>
-                                <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">Provider</th>
-                                <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">Model</th>
-                                <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">API Key</th>
-                                <th className="text-left py-2 text-xs font-medium text-neutral-500 uppercase tracking-wide">Status</th>
+                            <tr className="bg-slate-50 border-y border-slate-100">
+                                <th className="text-left py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent Role</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Provider</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model</th>
+                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">API Key</th>
+                                <th className="text-left py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-50">
+                        <tbody className="divide-y divide-slate-50">
                             {prefs.map(pref => {
                                 const providerKeys = keys.filter(k => k.provider === pref.provider && k.is_valid);
                                 const isSaving = saving === pref.agent_role;
                                 return (
-                                    <tr key={pref.agent_role} className="group">
-                                        <td className="py-3 pr-4 font-medium text-neutral-800">
+                                    <tr key={pref.agent_role} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="py-4 px-6 font-bold text-slate-800 text-xs">
                                             {AGENT_LABELS[pref.agent_role] ?? pref.agent_role}
                                         </td>
-                                        <td className="py-3 pr-4">
+                                        <td className="py-4 px-4">
                                             <select
                                                 value={pref.provider}
                                                 onChange={e => handleUpdate(pref, 'provider', e.target.value)}
-                                                className="text-sm border border-neutral-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+                                                className="text-xs font-semibold border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer"
                                             >
                                                 {Object.entries(PROVIDER_LABELS).map(([v, l]) => (
                                                     <option key={v} value={v}>{l}</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-3 pr-4">
+                                        <td className="py-4 px-4">
                                             <select
                                                 value={pref.model_name}
                                                 onChange={e => handleUpdate(pref, 'model_name', e.target.value)}
-                                                className="text-sm border border-neutral-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+                                                className="text-xs font-medium border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer"
                                             >
                                                 {MODEL_OPTIONS[pref.provider]?.map(m => (
                                                     <option key={m} value={m}>{m}</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-3 pr-4">
+                                        <td className="py-4 px-4">
                                             <select
                                                 value={pref.key_id ?? ''}
                                                 onChange={e => handleUpdate(pref, 'key_id', e.target.value || '')}
-                                                className="text-sm border border-neutral-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-neutral-900 bg-white"
+                                                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer min-w-[140px]"
                                             >
-                                                <option value="">First valid key</option>
+                                                <option value="">Platform Default</option>
                                                 {providerKeys.map(k => (
                                                     <option key={k.id} value={k.id}>{k.label} ({k.key_hint})</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-3">
-                                            <div className="flex items-center gap-2">
+                                        <td className="py-4 px-6 text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 {isSaving ? (
-                                                    <span className="text-xs text-neutral-400">Saving...</span>
+                                                    <Loader2 size={12} className="animate-spin text-purple-600" />
                                                 ) : (
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pref.is_default ? 'bg-neutral-100 text-neutral-500' : 'bg-neutral-900 text-white'}`}>
+                                                    <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider ${pref.is_default ? 'bg-slate-100 text-slate-500' : 'bg-purple-600 text-white shadow-sm'}`}>
                                                         {pref.is_default ? 'Default' : 'Custom'}
                                                     </span>
                                                 )}
                                                 {!pref.is_default && (
                                                     <button
                                                         onClick={() => handleReset(pref.agent_role)}
-                                                        className="text-xs text-neutral-400 hover:text-neutral-700 transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="p-1 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Reset to default"
                                                     >
-                                                        Reset
+                                                        <Trash2 size={14} />
                                                     </button>
                                                 )}
                                             </div>
@@ -364,28 +390,44 @@ function AgentPrefsSection() {
 
 export default function SettingsPage() {
     return (
-        <div className="min-h-screen bg-neutral-50">
-            <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="min-h-screen bg-slate-50 text-slate-800 selection:bg-purple-100 selection:text-purple-900">
+            <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
+                {/* Navigation Header */}
+                <div className="mb-10 flex items-center justify-between">
+                    <Link 
+                        href="/chat"
+                        className="flex items-center gap-2 text-slate-500 hover:text-purple-600 font-bold text-sm transition-all group"
+                    >
+                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> Back to Chat
+                    </Link>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-widest border border-emerald-100">
+                        <Shield size={12} /> Secure Tunnel Active
+                    </div>
+                </div>
+
                 {/* Page Header */}
-                <div className="mb-10">
-                    <h1 className="text-2xl font-semibold text-neutral-900 tracking-tight">Settings</h1>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        Configure LLM providers and agent model preferences for your projects.
-                        When no key is configured, the platform default keys are used automatically.
+                <div className="mb-12">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-widest mb-4">
+                        <SettingsIcon size={14} /> Configuration
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-3">System Settings</h1>
+                    <p className="text-base text-slate-500 max-w-2xl leading-relaxed">
+                        Fine-tune your autonomous workforce. Manage API orchestration keys and override default agent brain models for specialized tasks.
                     </p>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
                     <LLMKeysSection />
                     <AgentPrefsSection />
 
                     {/* Prompting Guides Reference */}
                     <Card>
                         <SectionHeader
-                            title="Prompting References"
-                            subtitle="Official best practices for writing effective system prompts for each provider."
+                            icon={BookOpen}
+                            title="Prompting Best Practices"
+                            subtitle="Official documentation for high-performance agent orchestration from top providers."
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
                             {[
                                 { provider: 'Amazon Bedrock', model: 'Nova Pro', url: 'https://docs.aws.amazon.com/nova/latest/userguide/prompt-engineering.html', note: 'All Default Agents' },
                                 { provider: 'OpenAI', model: 'GPT-4o', url: 'https://platform.openai.com/docs/guides/prompt-engineering', note: 'Fallback CEO, Finance agents' },
@@ -397,16 +439,25 @@ export default function SettingsPage() {
                                     href={g.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="block p-4 border border-neutral-100 rounded-lg hover:border-neutral-300 hover:bg-neutral-50 transition-colors group"
+                                    className="block p-5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-purple-200 hover:bg-white hover:shadow-lg hover:shadow-purple-500/5 transition-all group"
                                 >
-                                    <p className="text-sm font-medium text-neutral-800 group-hover:text-neutral-900">{g.provider}</p>
-                                    <p className="text-xs text-neutral-400 mt-0.5">{g.model}</p>
-                                    <p className="text-xs text-neutral-500 mt-2">{g.note}</p>
-                                    <p className="text-xs text-neutral-400 mt-1 underline underline-offset-2">View guide</p>
+                                    <p className="text-sm font-bold text-slate-800 group-hover:text-purple-600">{g.provider}</p>
+                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wide">{g.model}</p>
+                                    <p className="text-xs text-slate-500 mt-4 leading-relaxed">{g.note}</p>
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-purple-500 transition-colors uppercase tracking-widest">Read Docs</span>
+                                        <ArrowLeft size={12} className="rotate-180 text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                                    </div>
                                 </a>
                             ))}
                         </div>
                     </Card>
+                    
+                    <div className="text-center py-8">
+                        <p className="text-xs text-slate-400 font-medium tracking-wide italic">
+                            Platform keys are managed by Proximus-Nova admin. Personal keys take precedence.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

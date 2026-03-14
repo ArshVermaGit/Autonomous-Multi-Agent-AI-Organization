@@ -10,7 +10,7 @@ import MetricsPanel from '@/components/MetricsPanel'
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
-    Braces, Github, Settings
+    Braces, Github, Settings, Sparkles, Folder
 } from 'lucide-react'
 import Link from 'next/link'
 import { clsx } from 'clsx'
@@ -22,7 +22,7 @@ function NewProjectModal({ onClose, onCreate }: {
     onCreate: (idea: string, budget: number) => Promise<void>
 }) {
     const [idea, setIdea] = useState('')
-    const [budget, setBudget] = useState(100)
+    const [budget, setBudget] = useState(10)
     const [busy, setBusy] = useState(false)
 
     const EXAMPLES = [
@@ -48,35 +48,37 @@ function NewProjectModal({ onClose, onCreate }: {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-[#16161f] border border-[#252535] rounded-2xl p-6 w-full max-w-lg shadow-2xl z-10 animate-slide-up">
-                <h2 className="text-lg font-semibold mb-1">🚀 Start New Project</h2>
-                <p className="text-sm text-text-muted mb-5">Describe your idea — the AI organization will do the rest</p>
+            <div className="relative bg-[#09090b] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl z-10 animate-slide-up">
+                <h2 className="text-lg font-semibold mb-1 text-white flex items-center gap-2">
+                    <Sparkles size={18} className="text-emerald-500" /> Start New Project
+                </h2>
+                <p className="text-sm text-zinc-400 mb-5">Describe your idea — the AI agents will do the rest</p>
 
                 {/* Idea input */}
                 <div className="mb-4">
-                    <label className="block text-xs text-text-muted mb-1.5 uppercase tracking-wider">Business Idea</label>
+                    <label className="block text-xs text-zinc-500 mb-1.5 uppercase tracking-wider font-semibold">Business Idea</label>
                     <textarea
                         value={idea}
                         onChange={e => setIdea(e.target.value)}
-                        placeholder="Describe what you want to build..."
+                        placeholder="What do you want to build?"
                         rows={4}
-                        className="w-full bg-[#111118] border border-[#252535] rounded-xl p-3 text-sm text-text-primary
-                       placeholder-text-muted resize-none focus:outline-none focus:border-blue-500/60
-                       focus:ring-1 focus:ring-blue-500/20 transition-all font-sans"
+                        className="w-full bg-[#121214] border border-white/5 rounded-xl p-3 text-sm text-white
+                       placeholder-zinc-600 resize-none focus:outline-none focus:border-emerald-500/50
+                       focus:ring-1 focus:ring-emerald-500/20 transition-all font-sans"
                     />
                 </div>
 
                 {/* Example ideas */}
                 <div className="mb-4">
-                    <p className="text-xs text-text-muted mb-2">Examples:</p>
+                    <p className="text-xs text-zinc-500 mb-2 font-semibold">Examples:</p>
                     <div className="flex flex-wrap gap-1.5">
                         {EXAMPLES.map((ex, i) => (
                             <button
                                 key={i}
                                 onClick={() => setIdea(ex)}
-                                className="text-xs px-2.5 py-1 bg-[#1c1c28] hover:bg-[#252535] border border-[#252535]
-                           hover:border-blue-500/40 text-text-muted hover:text-text-primary
-                           rounded-full transition-all duration-150 cursor-pointer text-left"
+                                className="text-[11px] px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5
+                               text-zinc-400 hover:text-white
+                               rounded-full transition-all duration-150 cursor-pointer text-left"
                             >
                                 {ex.slice(0, 45)}…
                             </button>
@@ -85,36 +87,32 @@ function NewProjectModal({ onClose, onCreate }: {
                 </div>
 
                 {/* Budget slider */}
-                <div className="mb-5">
-                    <label className="flex items-center justify-between text-xs text-text-muted mb-1.5 uppercase tracking-wider">
+                <div className="mb-6">
+                    <label className="flex items-center justify-between text-xs text-zinc-500 mb-1.5 uppercase tracking-wider font-semibold">
                         Budget
-                        <span className="text-blue-400 font-mono font-medium">${budget}</span>
+                        <span className="text-emerald-400 font-mono font-medium">${budget}</span>
                     </label>
                     <input
                         type="range"
-                        min={10} max={1000} step={10}
+                        min={5} max={100} step={5}
                         value={budget}
                         onChange={e => setBudget(Number(e.target.value))}
-                        className="w-full accent-blue-500 cursor-pointer"
+                        className="w-full accent-emerald-500 cursor-pointer"
                     />
-                    <div className="flex justify-between text-[10px] text-text-muted mt-1">
-                        <span>$10 (demo)</span>
-                        <span>$1000 (production)</span>
-                    </div>
                 </div>
 
                 {/* Actions */}
                 <div className="flex gap-3">
-                    <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+                    <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-white text-sm font-medium transition-colors flex-1">Cancel</button>
                     <button
                         onClick={handleSubmit}
                         disabled={!idea.trim() || busy}
                         className={clsx(
-                            'btn-primary flex-1 justify-center',
+                            'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors',
                             (!idea.trim() || busy) && 'opacity-50 cursor-not-allowed'
                         )}
                     >
-                        {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                        {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                         {busy ? 'Starting...' : 'Launch Project'}
                     </button>
                 </div>
@@ -130,39 +128,38 @@ function ProjectItem({ project, isSelected, onClick }: {
     onClick: () => void
 }) {
     const statusConfig = {
-        pending: { icon: <Clock size={11} />, cls: 'badge-pending' },
-        running: { icon: <Loader2 size={11} className="animate-spin" />, cls: 'badge-info' },
-        completed: { icon: <CheckCircle2 size={11} />, cls: 'badge-success' },
-        failed: { icon: <AlertCircle size={11} />, cls: 'badge-error' },
-    }[project.status] || { icon: null, cls: 'badge-pending' }
+        pending: { icon: <Clock size={12} />, color: 'text-zinc-400' },
+        running: { icon: <Loader2 size={12} className="animate-spin" />, color: 'text-blue-400' },
+        completed: { icon: <CheckCircle2 size={12} />, color: 'text-emerald-400' },
+        failed: { icon: <AlertCircle size={12} />, color: 'text-red-400' },
+    }[project.status] || { icon: null, color: 'text-zinc-400' }
 
     return (
         <button
             onClick={onClick}
             className={clsx(
-                'w-full text-left p-3 rounded-xl border transition-all duration-150',
+                'w-full text-left p-3 rounded-xl transition-all duration-200 group',
                 isSelected
-                    ? 'bg-blue-500/10 border-blue-500/40'
-                    : 'bg-[#16161f] border-[#252535] hover:bg-[#1c1c28] hover:border-[#3a3a55]'
+                    ? 'bg-emerald-500/10 border border-emerald-500/20'
+                    : 'bg-transparent border border-transparent hover:bg-white/5'
             )}
         >
             <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-text-primary truncate">{project.name}</p>
-                <span className={statusConfig.cls}>
+                <p className={clsx("text-sm font-medium truncate", isSelected ? 'text-emerald-400' : 'text-zinc-300 group-hover:text-white')}>{project.name}</p>
+                <span className={clsx("flex items-center gap-1 text-xs", statusConfig.color)}>
                     {statusConfig.icon}
-                    {project.status}
                 </span>
             </div>
             {/* Progress bar */}
             {project.status === 'running' && (
-                <div className="mt-2 h-1 bg-[#252535] rounded-full overflow-hidden">
+                <div className="mt-2 h-1 bg-black/50 rounded-full overflow-hidden border border-white/5">
                     <div
-                        className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${project.progress_pct || 0}%` }}
                     />
                 </div>
             )}
-            <div className="flex items-center gap-3 mt-1.5 text-[11px] text-text-muted">
+            <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500 font-mono">
                 <span>{project.tasks_done}/{project.tasks_total} tasks</span>
                 <span className="ml-auto">
                     {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
@@ -232,99 +229,104 @@ export default function DashboardPage() {
     const activeProject = selectedProject || projects[0] || null
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-[#09090b] text-white selection:bg-emerald-500/30">
             {/* ── Header ─────────────────────────────────────────────── */}
-            <header className="glass border-b border-[#252535] px-6 py-3 flex items-center gap-4 sticky top-0 z-40">
-                <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <Cpu size={16} className="text-white" />
+            <header className="bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <Sparkles size={16} className="text-white" />
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold text-gradient-blue">AI Organization</h1>
-                        <p className="text-[10px] text-text-muted">Autonomous · Multi-Agent · Production</p>
+                        <h1 className="text-sm font-semibold tracking-tight text-white">Proximus-Nova</h1>
+                        <p className="text-[10px] text-emerald-400 font-medium">Live Orchestrator</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-3">
                     {/* API status */}
                     <div className={clsx(
-                        'flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border',
+                        'flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full font-mono uppercase tracking-wider',
                         apiOnline
-                            ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                            : 'text-red-400 bg-red-500/10 border-red-500/20'
+                            ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                            : 'text-red-400 bg-red-500/10 border border-red-500/20'
                     )}>
                         <span className={clsx('w-1.5 h-1.5 rounded-full', apiOnline ? 'bg-emerald-400' : 'bg-red-400',
                             apiOnline && 'animate-pulse')} />
-                        {apiOnline ? 'API Online' : 'API Offline'}
+                        {apiOnline ? 'Online' : 'Offline'}
                     </div>
 
-                    <button onClick={fetchAll} className="btn-ghost p-1.5" title="Refresh">
-                        <RefreshCw size={13} />
+                    <div className="h-4 w-px bg-white/10 mx-1"></div>
+
+                    <button onClick={fetchAll} className="p-2 text-zinc-400 hover:text-white transition-colors" title="Refresh">
+                        <RefreshCw size={16} />
                     </button>
 
-                    <a
-                        href="https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-ghost p-1.5"
-                    >
-                        <Github size={13} />
-                    </a>
-
-                    <Link href="/settings" className="btn-ghost p-1.5" title="Settings">
-                        <Settings size={13} />
+                    <Link href="/settings" className="p-2 text-zinc-400 hover:text-white transition-colors" title="Settings">
+                        <Settings size={16} />
                     </Link>
 
-                    <button onClick={() => setShowModal(true)} className="btn-primary">
-                        <Plus size={14} />
+                    <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-sm font-medium transition-colors ml-2">
+                        <Plus size={16} />
                         New Project
                     </button>
                 </div>
             </header>
 
             {/* ── Body ───────────────────────────────────────────────── */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden relative">
 
                 {/* Sidebar — Project List */}
-                <aside className="w-64 flex-shrink-0 border-r border-[#252535] flex flex-col bg-[#0d0d14]">
-                    <div className="px-4 py-3 border-b border-[#252535]">
-                        <p className="text-xs text-text-muted uppercase tracking-wider">Projects ({projects.length})</p>
+                <aside className="w-72 flex-shrink-0 border-r border-white/5 flex flex-col bg-[#09090b]">
+                    <div className="px-5 py-4 flex items-center gap-2 border-b border-white/5 flex-shrink-0">
+                        <Folder size={14} className="text-zinc-500" />
+                        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Projects</p>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
                         {isLoading
                             ? Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="h-20 rounded-xl bg-[#1c1c28] animate-pulse" />
+                                <div key={i} className="h-[76px] rounded-xl bg-white/5 animate-pulse" />
                             ))
                             : projects.length === 0
-                                ? <div className="text-center text-xs text-text-muted pt-10">
+                                ? <div className="text-center text-xs text-zinc-500 pt-10">
                                     <p>No projects yet</p>
-                                    <button onClick={() => setShowModal(true)} className="mt-3 text-blue-400 hover:text-blue-300 flex items-center gap-1 mx-auto">
-                                        <Plus size={12} /> Start one
+                                    <button onClick={() => setShowModal(true)} className="mt-4 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center gap-2 mx-auto transition-colors">
+                                        <Plus size={14} /> Start one
                                     </button>
                                 </div>
                                 : projects.map(p => (
-                                    <ProjectItem
-                                        key={p.id}
-                                        project={p}
-                                        isSelected={selectedProject?.id === p.id}
-                                        onClick={() => setSelectedProject(p)}
-                                    />
+                                    <div key={p.id} className="relative group/item">
+                                        <ProjectItem
+                                            project={p}
+                                            isSelected={selectedProject?.id === p.id}
+                                            onClick={() => setSelectedProject(p)}
+                                        />
+                                        {selectedProject?.id === p.id && (
+                                            <div className="absolute right-2 top-2 hidden group-hover/item:flex items-center gap-1">
+                                                 <button className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors border border-white/5 backdrop-blur" title="Fork Context" onClick={(e) => { e.stopPropagation(); alert('Forking context...') }}>
+                                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path><path d="M12 12v3"></path></svg>
+                                                 </button>
+                                                 <button className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-red-400 transition-colors border border-white/5 backdrop-blur" title="Rollback System" onClick={(e) => { e.stopPropagation(); alert('Rolling back to previous checkpoint...') }}>
+                                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                                                 </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ))
                         }
                     </div>
                 </aside>
 
                 {/* Main content */}
-                <main className="flex-1 overflow-y-auto p-5 space-y-5">
+                <main className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
                     {/* Metrics strip */}
                     <MetricsPanel metrics={null} agents={[]} isLoading={isLoading} />
 
                     {/* Middle row: DAG + Cost */}
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                        <div className="xl:col-span-2">
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div className="xl:col-span-2 bg-[#121214] border border-white/5 rounded-2xl overflow-hidden shadow-sm hover:border-white/10 transition-colors">
                             <DagViewer tasks={tasks} projectId={activeProject?.id || ''} />
                         </div>
-                        <div>
+                        <div className="bg-[#121214] border border-white/5 rounded-2xl p-6 shadow-sm hover:border-white/10 transition-colors">
                             <CostMeter
                                 budgetUsd={activeProject?.budget_usd || 100}
                                 spentUsd={activeProject?.spent_usd || 0}
@@ -333,12 +335,14 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Agent Feed — full width */}
-                    <AgentFeed
-                        events={events}
-                        status={wsStatus}
-                        latency={latency}
-                        onClear={clearEvents}
-                    />
+                    <div className="w-full">
+                        <AgentFeed
+                            events={events}
+                            status={wsStatus}
+                            latency={latency}
+                            onClear={clearEvents}
+                        />
+                    </div>
                 </main>
             </div>
 

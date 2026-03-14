@@ -345,7 +345,7 @@ class AgentMicroservice:
             await self._emit_event(
                 project_id=task_msg.project_id,
                 event_type="task_complete",
-                message=f"[{self.role}] ✅ Completed: {task_msg.task_name} ({duration_ms}ms)",
+                message=f"[{self.role}] Completed: {task_msg.task_name} ({duration_ms}ms)",
                 data={"task_id": task_msg.task_id, "duration_ms": duration_ms},
                 level="success",
                 trace_id=task_msg.trace_id,

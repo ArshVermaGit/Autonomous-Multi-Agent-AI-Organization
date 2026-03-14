@@ -60,7 +60,10 @@ You explain your architectural decisions with rationale.
     ) -> Dict[str, Any]:
         """Design complete system architecture from business plan."""
         logger.info("CTO Agent: Designing architecture")
-
+        if context:
+            await context.emit_event(
+                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": "Evaluating AWS services and cost constraints for the given MVP...", "level": "info"}})()
+            )
         features = [f["name"] for f in business_plan.get("mvp_features", [])]
 
         prompt = f"""
@@ -73,7 +76,7 @@ Target Users Year 1: {business_plan.get('estimated_users_year1', 1000)}
 
 Return a JSON architecture specification:
 {{
-  "frontend": {{"framework": "Next.js 14", "hosting": "ECS/Amplify", "cdn": "CloudFront"}},
+  "frontend": {{"framework": "Next.js 14 (Web) or Expo/React Native (Mobile)", "hosting": "ECS/Amplify", "cdn": "CloudFront"}},
   "backend": {{"framework": "FastAPI", "language": "Python 3.11", "runtime": "ECS Fargate"}},
   "database": {{"type": "PostgreSQL 15", "hosting": "RDS", "instance": "db.t3.micro"}},
   "cache": {{"type": "Redis 7", "hosting": "ElastiCache", "instance": "cache.t3.micro"}},
@@ -124,6 +127,11 @@ Return a JSON architecture specification:
 
         # Validate and adjust for budget
         arch = self._validate_cost(arch, budget_usd)
+
+        if context:
+            await context.emit_event(
+                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": f"Drafted Architecture:\nFrontend: {arch.get('frontend', {}).get('framework')}\nBackend: {arch.get('backend', {}).get('framework')}\nDatabase: {arch.get('database', {}).get('type')}", "level": "info"}})()
+            )
 
         # Self-critique the architecture
         arch = await self.self_critique(arch)
