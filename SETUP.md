@@ -1,43 +1,55 @@
-# 🚀 Setup Guide — Cross-Platform
+# Setup Guide — Cross-Platform
 
 > Works on: Ubuntu · Debian · Arch · macOS · Windows 11 · Windows 10 (WSL2) · Raspberry Pi (ARM64)
 
 ---
 
-## ⚡ Quickstart (All Platforms) — Docker Method
+## Quickstart (The "Hackathon" Way)
 
-This is the **recommended method**. One command. Zero dependencies except Docker.
-
-```bash
+This is the **recommended method** for the Amazon Nova AI Hackathon.
+It uses the unified launcher to verify your environment and start all services (including the Next.js Dashboard).
+ 
+ ```bash
 # 1. Clone
 git clone https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization.git
 cd "Autonomous Multi-Agent AI Organization"
+ 
+ # 2. Setup environment
+ cp .env.example .env
 
-# 2. Copy environment config
+# 2. Setup environment
 cp .env.example .env
-# Then edit .env with your API keys (see section below)
+# Edit .env and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION
 
-# 3. Start everything
-docker compose up -d
-
-# 4. Open dashboard
-open http://localhost:3000   # Mac
-xdg-open http://localhost:3000  # Linux
-# Windows: just open browser → http://localhost:3000
+# 3. Start the platform
+./proximus-nova start
 ```
+**That's it.** The CLI will build the containers and launch the dashboard at `http://localhost:3000`.
 
-**That's it.** The full stack starts automatically:
+---
+## Manual / Docker Compose Setup
+Use this if you want more control or are running in a CI/CD environment.
+ 
+ ```bash
+ # 1. Copy environment config
+ cp .env.example .env
+ 
+ # 2. Start everything
+ docker compose up -d --build
+ 
+ # 3. Open dashboard
+ #    http://localhost:3000
+```
+ 
+ **Expected Services:**
 
-- Dashboard at `http://localhost:3000`
-- API at `http://localhost:8080`
-- Kafka UI at `http://localhost:8888`
-- Grafana at `http://localhost:3002`
-- Prometheus at `http://localhost:9090`
-- Jaeger at `http://localhost:16686`
+- Dashboard: `http://localhost:3000`
+- API Gateway: `http://localhost:8080`
+- Kafka UI: `http://localhost:8888`
 
 ---
 
-## 🔑 Environment Variables (`.env`)
+## Environment Variables (`.env`)
 
 ```bash
 # LLM API Keys (at least one required for agents to work)
@@ -62,7 +74,7 @@ ENVIRONMENT=development
 
 ---
 
-## 🐧 Linux (Ubuntu / Debian)
+## Linux (Ubuntu / Debian)
 
 ```bash
 # Install Docker
@@ -89,7 +101,7 @@ docker compose up -d
 
 ---
 
-## 🍎 macOS (Intel + Apple Silicon M1/M2/M3)
+## macOS (Intel + Apple Silicon M1/M2/M3)
 
 ```bash
 # Install Docker Desktop — handles everything including ARM64
@@ -102,11 +114,11 @@ brew install --cask docker
 docker compose up -d
 ```
 
-> ✅ **Apple Silicon (M1/M2/M3):** All Docker images include `linux/arm64` support. No changes needed.
+> **Apple Silicon (M1/M2/M3):** All Docker images include `linux/arm64` support. No changes needed.
 
 ---
 
-## 🪟 Windows
+## Windows
 
 ### Option A: Docker Desktop (Recommended)
 
@@ -133,7 +145,7 @@ sudo usermod -aG docker $USER
 
 ---
 
-## 🔧 Native Python Setup (No Docker — Advanced)
+## Native Python Setup (No Docker — Advanced)
 
 Use this if you want to develop without Docker, or run individual services.
 
@@ -169,7 +181,7 @@ python run_demo.py
 
 ---
 
-## 🔁 Common Commands
+## Common Commands
 
 ```bash
 # Start everything
@@ -199,7 +211,7 @@ docker compose exec orchestrator bash
 
 ---
 
-## 🌐 Cloud Deployment (AWS)
+## Cloud Deployment (AWS)
 
 ```bash
 # Prerequisites: AWS CLI, kubectl, Helm, Terraform
@@ -223,13 +235,13 @@ kubectl get service api-gateway -n ai-org
 
 ---
 
-## ❓ Troubleshooting
+## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `Port already in use` | `docker compose down` then retry |
-| `Permission denied /var/run/docker.sock` | `sudo usermod -aG docker $USER && newgrp docker` |
-| Slow on Mac M1/M2 | Normal on first pull (downloading ARM64 images). Subsequent starts are fast. |
-| Kafka not starting | Give it 30s — Zookeeper starts first. Check: `docker compose logs kafka` |
-| Agents not thinking | Check `OPENAI_API_KEY` in `.env` — without it, agents use fallback stubs |
-| Out of disk space | `docker system prune -a` (removes unused images) |
+| Problem                                  | Fix                                                                           |
+| :--------------------------------------- | :---------------------------------------------------------------------------- |
+| `Port already in use`                    | `docker compose down` then retry                                              |
+| `Permission denied /var/run/docker.sock` | `sudo usermod -aG docker $USER && newgrp docker`                              |
+| Slow on Mac M1/M2                        | Normal on first pull (downloading ARM64 images). Subsequent starts are fast.  |
+| Kafka not starting                       | Give it 30s — Zookeeper starts first. Check: `docker compose logs kafka`      |
+| Agents not thinking                      | Check `OPENAI_API_KEY` in `.env` — without it, agents use fallback stubs      |
+| Out of disk space                        | `docker system prune -a` (removes unused images)                              |

@@ -2,18 +2,18 @@
 
 ## Branch Naming Convention
 
-Every operation **must** be done on its own branch. Never commit directly to `master`/`main`.
+Every operation **must** be done on its own branch. Never commit directly to `main`.
 
 ### Format
 
-```
+```text
 <type>/<short-description>
 ```
 
 ### Types
 
 | Type | Used For | Example |
-|------|----------|---------|
+| :--- | :--- | :--- |
 | `feature/` | New feature or enhancement | `feature/nextjs-dashboard` |
 | `bugfix/` | Fixing a non-urgent bug | `bugfix/moe-router-edge-case` |
 | `hotfix/` | Urgent production fix | `hotfix/kafka-connection-leak` |
@@ -28,8 +28,8 @@ Every operation **must** be done on its own branch. Never commit directly to `ma
 ### Rules
 
 1. **One branch = one concern.** Don't bundle unrelated changes.
-2. **Branch from `master`** unless it's a hotfix on production.
-3. **Never force-push to `master`.**
+2. **Branch from `main`** unless it's a hotfix on production.
+3. **Never force-push to `main`.**
 4. **Merge via PR** (or explicit user approval in this project).
 5. **Delete branch after merge.**
 
@@ -37,7 +37,7 @@ Every operation **must** be done on its own branch. Never commit directly to `ma
 
 ## Commit Message Format
 
-```
+```text
 <type>(<scope>): <short description>
 
 [optional body]
@@ -47,7 +47,7 @@ Every operation **must** be done on its own branch. Never commit directly to `ma
 
 ### Examples
 
-```
+```text
 feat(moe): add ensemble routing for low-confidence tasks
 fix(kafka): handle reconnect on broker restart
 chore(deps): bump pydantic to 2.6.0
@@ -61,9 +61,9 @@ lang(rust): add fast cosine similarity service
 
 ## Active Branches Log
 
-| Branch | Type | Status | Description |
-|--------|------|--------|-------------|
-| `master` | — | Stable | Production base |
+| Branch                     | Type  | Status | Description                  |
+| :------------------------- | :---- | :----- | :--------------------------- |
+| `main`                     | —     | Stable | Production base              |
 | `chore/git-workflow-setup` | chore | Active | Git conventions + .gitignore |
 
 > **Update this table every time you create or merge a branch.**

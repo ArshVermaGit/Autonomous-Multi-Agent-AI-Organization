@@ -12,16 +12,16 @@
 
 > A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
 >
-> 🚀 **New Feature Updates:**
+> **Hackathon Edition Features:**
 >
-> - Complete default adoption of **Amazon Nova** for all specialized agents.
-> - **Proximus-Nova CLI** launcher for fast terminal setup, management and cleanup.
-> - Premium animated **Next.js** terminal-based dashboard UI.
-> - Real-time decoupled task tracking and metrics logging directly to **PostgreSQL**.
+> - **Native Amazon Nova Integration**: Specialized agents optimized for Nova Pro, Lite, and Micro models.
+> - **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
+> - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
+> - **Event-Driven Architecture**: Decoupled gRPC/Kafka backbone for high-concurrency autonomous workflows.
 
 ---
 
-## 🚀 What It Does
+## What It Does
 
 You type a business idea. The system:
 
@@ -37,7 +37,7 @@ Every agent runs asynchronously over Kafka. You watch it all happen live in the 
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#f8fafc', 'primaryBorderColor': '#cbd5e1', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'clusterBkg': '#ffffff', 'clusterBorder': '#cbd5e1', 'edgeLabelBackground': '#ffffff'}}}%%
@@ -63,12 +63,12 @@ flowchart TB
     Kafka --> Agents
 
     subgraph Agents ["Python AI Agents"]
-        CEO["CEO · Nova 2 Pro"]
-        CTO["CTO · Nova 2 Pro"]
-        ENG_FE["Engineer (FE) · Nova 2 Lite"]
-        ENG_BE["Engineer (BE) · Nova 2 Lite"]
-        QA["QA · Nova 2 Lite"]
-        OPS["DevOps · Nova 2 Lite"]
+        CEO["CEO · Nova Lite"]
+        CTO["CTO · Nova Lite"]
+        ENG_FE["Engineer (FE) · Nova Lite"]
+        ENG_BE["Engineer (BE) · Nova Lite"]
+        QA["QA · Nova Lite"]
+        OPS["DevOps · Nova Lite"]
         FIN["Finance · Nova Micro"]
     end
 
@@ -88,7 +88,14 @@ flowchart TB
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
+
+| Command                 | Description                                                      |
+| :---------------------- | :--------------------------------------------------------------- |
+| `./proximus-nova start` | Launches the full platform (detached)                            |
+| `./proximus-nova stop`  | Gracefully stops all services                                    |
+| `./proximus-nova clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
+| `./proximus-nova tui`   | Launches the interactive Terminal UI                             |
 
 | Layer             | Technology                                                 |
 | ----------------- | ---------------------------------------------------------- |
@@ -107,7 +114,7 @@ flowchart TB
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 The fastest way to run Proximus-Nova is using the unified **CLI Launcher**.
 
@@ -129,24 +136,11 @@ cp .env.example .env
 
 # 3. Start the platform
 ./proximus-nova start
-```
-
-**That's it.** The CLI will verify your docker daemon, build the containers, and launch the dashboard locally at `http://localhost:3000`.
-
-### Common CLI Operations
-
-| Command | Description |
-| :--- | :--- |
-| `./proximus-nova start` | Launches the full platform (detached) |
-| `./proximus-nova stop` | Gracefully stops all services |
-| `./proximus-nova clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
-| `./proximus-nova tui` | Launches the interactive Terminal UI |
+For long-term plans, SaaS scaling, and post-hackathon objectives (after March 17), please see the [FUTURE_ROADMAP.md](./FUTURE_ROADMAP.md).
 
 ---
 
-## 🔒 Advanced Settings
-
-### SaaS / Hosted Mode (Google OAuth)
+## Advanced Settings
 
 For deploying on a server where multiple users sign in with Google accounts.
 
@@ -185,38 +179,19 @@ Users land on a login page → **Sign in with Google** → redirected to their d
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
-### Local Mode (`.env.local`)
+### Auth & Security
 
-| Variable                | Required     | Description                                    |
-| ----------------------- | ------------ | ---------------------------------------------- |
-| `AUTH_DISABLED`         | ✅           | Set to `true` — skips all auth                 |
-| `KEY_ENCRYPTION_KEY`    | ✅           | 64-char hex (32 bytes). `openssl rand -hex 32` |
-| `AWS_ACCESS_KEY_ID`     | one of these | Your AWS IAM Access Key for Bedrock            |
-| `AWS_SECRET_ACCESS_KEY` | one of these | Your AWS IAM Secret Key                        |
-| `AWS_REGION`            | one of these | AWS Region (e.g. `us-east-1`)                  |
-| `OPENAI_API_KEY`        | one of these | Fallback: OpenAI API key                       |
-| `ANTHROPIC_API_KEY`     | one of these | Fallback: Anthropic API key                    |
-| `GOOGLE_API_KEY`        | one of these | Fallback: Google (Gemini) API key              |
-
-### SaaS Mode (`.env`)
-
-All local vars above, plus:
-
-| Variable               | Required | Description                                   |
-| ---------------------- | -------- | --------------------------------------------- |
-| `AUTH_DISABLED`        | ✅       | Set to `false`                                |
-| `GOOGLE_CLIENT_ID`     | ✅       | From Google Cloud Console                     |
-| `GOOGLE_CLIENT_SECRET` | ✅       | From Google Cloud Console                     |
-| `GOOGLE_REDIRECT_URL`  | ✅       | `https://yourdomain.com/auth/google/callback` |
-| `JWT_PRIVATE_KEY_PATH` | ✅       | Path to `keys/private.pem`                    |
-| `JWT_PUBLIC_KEY_PATH`  | ✅       | Path to `keys/public.pem`                     |
-| `JWT_EXPIRY`           |          | Default: `168h` (7 days)                      |
+| `AUTH_DISABLED`        | Yes      | Set to `true` for local, `false` for SaaS      |
+| `KEY_ENCRYPTION_KEY`   | Yes      | 64-char hex (32 bytes). `openssl rand -hex 32` |
+| `JWT_PRIVATE_KEY_PATH` | Yes      | Path to `keys/private.pem` (SaaS only)         |
+| `JWT_PUBLIC_KEY_PATH`  | Yes      | Path to `keys/public.pem` (SaaS only)          |
+| `JWT_EXPIRY`           |          | Default: `168h` (7 days)                       |
 
 ---
 
-## 🌐 API Routes (Go Gateway — port 8080)
+## API Routes (Go Gateway — port 8080)
 
 | Method   | Path                             | Description                         |
 | -------- | -------------------------------- | ----------------------------------- |
@@ -239,7 +214,7 @@ All local vars above, plus:
 
 ---
 
-## 🧠 LLM Configuration
+## LLM Configuration
 
 ### Default Models (Current Configuration)
 
@@ -247,8 +222,8 @@ By default, the entire system is powered by Amazon Nova models. However, the orc
 
 | Agent         | Default Provider | Default Model            | Supported Alternatives    |
 | :------------ | :--------------- | :----------------------- | :------------------------ |
-| CEO           | Bedrock          | `amazon.nova-pro-v1:0`   | OpenAI, Anthropic, Google |
-| CTO           | Bedrock          | `amazon.nova-pro-v1:0`   | OpenAI, Anthropic, Google |
+| CEO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
+| CTO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
 | Engineer (BE) | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
 | Engineer (FE) | Bedrock          | `amazon.nova-lite-v1:0`  | Google (Gemini)           |
 | QA            | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
@@ -272,7 +247,7 @@ The resolution order per task:
 
 ---
 
-## 🗄️ Database Migrations
+## Database Migrations
 
 Migrations run automatically in the local Docker Compose stack.
 
@@ -293,7 +268,7 @@ migrate -path go-backend/migrations -database "$DATABASE_URL" down 1
 
 ---
 
-## 📊 Dashboard
+## Dashboard
 
 Access at `http://localhost:3000`
 
@@ -305,7 +280,7 @@ Access at `http://localhost:3000`
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 ├── proximus-nova             Main CLI Launcher (Python/Bash)
@@ -369,7 +344,7 @@ Access at `http://localhost:3000`
 
 ---
 
-## ☸️ Kubernetes Deployment
+## Kubernetes Deployment
 
 ```bash
 cd infra/helm/ai-org
@@ -379,7 +354,7 @@ helm install ai-org . --namespace ai-org-system --create-namespace \
   --set gateway.env.GOOGLE_CLIENT_SECRET=<your-secret>
 ```
 
-## ☁️ Terraform (AWS)
+## Terraform (AWS)
 
 ```bash
 cd infra/terraform
@@ -392,7 +367,7 @@ Provisions: ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, AL
 
 ---
 
-## 🔒 Security
+## Security
 
 - **Encrypted API keys** — AES-256-GCM. Raw keys never written to disk.
 - **`key_hint`** — Only last 4 chars of a key are stored unencrypted (safe for UI display).
@@ -404,7 +379,7 @@ Provisions: ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, AL
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
@@ -421,6 +396,6 @@ python3 -m py_compile agents/*.py
 
 ---
 
-## 📄 License
+## License
 
 MIT — see `LICENSE` for details.
