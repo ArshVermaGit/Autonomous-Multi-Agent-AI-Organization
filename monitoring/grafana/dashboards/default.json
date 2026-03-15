@@ -17,7 +17,26 @@
   "graphTooltip": 0,
   "links": [],
   "liveNow": false,
-  "panels": [],
+  "panels": [
+    {
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [{ "expr": "rate(node_cpu_seconds_total{mode=\"idle\"}[5m])", "refId": "A" }]
+    },
+    {
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [{ "expr": "node_memory_MemAvailable_bytes", "refId": "A" }]
+    },
+    {
+      "title": "Agent Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count[5m])) by (handler)", "refId": "A" }]
+    }
+  ],
   "refresh": false,
   "schemaVersion": 38,
   "style": "dark",

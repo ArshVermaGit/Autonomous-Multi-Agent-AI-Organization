@@ -477,14 +477,23 @@ class OrchestratorEngine:
 
         # Invoke agent.self_critique on all completed task outputs
         critiques_collected = 0
+        reflections = []
         if task_graph:
             for task in task_graph.tasks.values():
-                if task.status == TaskStatus.COMPLETED and task.output:
+                if task.status == TaskStatus.COMPLETED and task.output_data:
                     agent = self._agent_registry.get(task.agent_role)
                     if agent and hasattr(agent, "self_critique"):
                         try:
                             # Safely attempt self_critique reflection
-                            critique_result = await agent.self_critique(task.output)
+                            critique_result = await agent.self_critique(task.output_data)
+
+                            reflection_summary = {
+                                "task": task.name,
+                                "agent": task.agent_role,
+                                "approved": critique_result.get("_critique", {}).get("approved", True),
+                                "score": sum(critique_result.get("_critique", {}).get("scores", {}).values()) / 4 if critique_result.get("_critique", {}).get("scores") else 7.0
+                            }
+                            reflections.append(reflection_summary)
 
                             # Log the critique
                             ctx["decision_log"].log(
@@ -492,7 +501,7 @@ class OrchestratorEngine:
                                 decision_type="reflection",
                                 description=f"Self-critique on task: {task.name}",
                                 rationale="Continuous improvement loop",
-                                input_context={"task_output": str(task.output)[:500]},
+                                input_context={"task_output": str(task.output_data)[:500]},
                                 output=critique_result,
                                 confidence=0.85,
                                 tags=["reflection", "critique"],
@@ -507,10 +516,15 @@ class OrchestratorEngine:
                             )
 
         # Analyze macro results
-        total_cost = cost_ledger.get_total_cost()
+        total_cost = cost_ledger.total_spent()
         task_count = len(task_graph.tasks) if task_graph else 0
+        
+        avg_score = sum(r["score"] for r in reflections) / len(reflections) if reflections else 0.0
+        approvals = sum(1 for r in reflections if r["approved"])
 
         critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
+        critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. Approvals: {approvals}/{critiques_collected}. "
+        
         if total_cost > self.budget_usd:
             critique_msg += f"Budget exceeded (${total_cost:.2f} / ${self.budget_usd:.2f}) — optimization recommended."
             level = "warning"
@@ -527,7 +541,10 @@ class OrchestratorEngine:
                     "total_cost": total_cost,
                     "budget": self.budget_usd,
                     "reflections_gathered": critiques_collected,
-                    "task_efficiency": "High"
+                    "average_quality_score": round(avg_score, 2),
+                    "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
+                    "reflections": reflections,
+                    "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
                 },
                 level=level,
             )
