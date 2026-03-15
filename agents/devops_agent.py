@@ -5,7 +5,8 @@ and orchestrates the full AWS deployment lifecycle.
 """
 
 import textwrap
-from collections.abc import Generator
+
+# from collections.abc import Generator (removed unused)
 from typing import Any, Dict, Optional
 from typing import Any
 
@@ -57,7 +58,11 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         """Generate all infrastructure code and simulate deployment."""
         # Fix: Ensure arch is a dict to avoid "Cannot index into str" errors later
         arch: Dict[str, Any] = {}
-        if context and hasattr(context, "memory") and hasattr(context.memory, "architecture"):
+        if (
+            context
+            and hasattr(context, "memory")
+            and hasattr(context.memory, "architecture")
+        ):
             arch = context.memory.architecture
         elif architecture is not None:
             arch = architecture
@@ -93,7 +98,9 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                 decision_type="deployment",
                 description="AWS infrastructure provisioned and services deployed",
                 rationale="ECS Fargate chosen for serverless container management",
-                input_context={"architecture": str(arch)},  # Removed slice to avoid Pyre indexing error
+                input_context={
+                    "architecture": str(arch)
+                },  # Removed slice to avoid Pyre indexing error
                 output=deployment_result,
                 confidence=0.88,
                 tags=["aws", "deployment", "terraform"],
@@ -117,7 +124,10 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         steps = [
             ("git init", "Initializing local git repository..."),
             ("git commit", "Committing generated source code..."),
-            ("github push", "Pushing branch to GitHub -> https://github.com/ai-org/projects"),
+            (
+                "github push",
+                "Pushing branch to GitHub -> https://github.com/ai-org/projects",
+            ),
             ("pod start", "Spinning up local Dev Pod for instant preview..."),
             ("terraform init", "Initializing AWS infrastructure via Terraform..."),
             ("docker build", "Building frontend and backend images..."),
@@ -126,7 +136,12 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         ]
 
         import asyncio
+<<<<<<< Updated upstream
         for _step, message in steps:
+=======
+
+        for step, message in steps:
+>>>>>>> Stashed changes
             logger.info(message)
             if context:
                 # Fix: Replace metaprogramming class with a standardized dict format
@@ -135,7 +150,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                     "type": "thinking",
                     "agent": self.ROLE,
                     "message": message,
-                    "level": "info"
+                    "level": "info",
                 }
                 await context.emit_event(event_data)
                 await context.emit_event(
