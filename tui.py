@@ -54,7 +54,10 @@ class ProximusNovaTUI(App):
             placeholder="➜ Type a goal (e.g. 'Build a Next.js landing page...')",
             id="cmd_input",
         )
-        yield Input(placeholder="➜ Your Business Goal (e.g. 'Build a SaaS scaffold')", id="cmd_input")
+        yield Input(
+            placeholder="➜ Your Business Goal (e.g. 'Build a SaaS scaffold')",
+            id="cmd_input",
+        )
         yield Footer()
 
     def on_mount(self) -> None:
@@ -99,19 +102,19 @@ class ProximusNovaTUI(App):
     async def stream_events(self, project_id: str):
         log = self.query_one(RichLog)
         uri = f"ws://localhost:8080/ws/{project_id}"
-        
+
         try:
             async with websockets.connect(uri) as websocket:
                 log.write(f"[bold green]Connected to project {project_id}[/]")
-                
+
                 while True:
                     message = await websocket.recv()
                     data = json.loads(message)
-                    
+
                     event_type = data.get("type", "unknown")
                     agent = data.get("agent", "System")
                     text = data.get("message", "")
-                    
+
                     # Formatting based on role
                     colors = {
                         "CEO": "blue",
@@ -123,20 +126,28 @@ class ProximusNovaTUI(App):
                         "Orchestrator": "white",
                     }
                     color = colors.get(agent, "dim")
-                    
+
                     timestamp = datetime.now().strftime("%H:%M:%S")
-                    
+
                     if event_type == "thinking":
-                        log.write(f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] [italic dim]{text}[/]")
+                        log.write(
+                            f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] [italic dim]{text}[/]"
+                        )
                     elif event_type == "task_start":
-                        log.write(f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] ➜ Starting: [bold]{text}[/]")
+                        log.write(
+                            f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] ➜ Starting: [bold]{text}[/]"
+                        )
                     elif event_type == "task_completed":
-                        log.write(f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] ✅ [green]Completed[/]")
+                        log.write(
+                            f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] ✅ [green]Completed[/]"
+                        )
                     elif event_type == "phase_change":
                         log.write(f"\n[bold white]── PHASE CHANGE: {text} ──[/]\n")
                     else:
-                        log.write(f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] {text}")
-                        
+                        log.write(
+                            f"[dim]{timestamp}[/] [bold {color}]\\[{agent}][/] {text}"
+                        )
+
         except Exception as e:
             log.write(f"[bold red]Connection lost: {str(e)}[/]")
 
@@ -144,7 +155,7 @@ class ProximusNovaTUI(App):
         idea = event.value.strip()
         if not idea:
             return
-        
+
         input_widget = self.query_one(Input)
         log = self.query_one(RichLog)
 
@@ -156,23 +167,23 @@ class ProximusNovaTUI(App):
 
         log.write(f"\n[bold white]➜ {idea}[/]")
         self.run_worker(self.simulate_execution(idea), exclusive=True)
-        
+
         log.write(f"\n[bold white]🚀 Launching Goal:[/] {idea}")
-        
+
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     "http://localhost:8080/v1/projects",
                     json={"idea": idea, "name": idea[:30]},
-                    timeout=10.0
+                    timeout=10.0,
                 )
                 resp.raise_for_status()
                 project = resp.json()
                 project_id = project["id"]
-                
+
                 # Start listener background task
                 self.run_worker(self.stream_events(project_id))
-                
+
         except Exception as e:
             log.write(f"[bold red]Failed to launch project: {str(e)}[/]")
 

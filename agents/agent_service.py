@@ -259,10 +259,16 @@ class AgentMicroservice:
                 logger.error(
                     "Failed to parse TaskMessage",
                     error=str(e),
-                    raw_preview=raw_preview[:500] if len(raw_preview) > 500 else raw_preview,
+                    raw_preview=(
+                        raw_preview[:500] if len(raw_preview) > 500 else raw_preview
+                    ),
                 )
                 await self._emit_error_event(
-                    project_id=str(raw_msg.get("project_id", "unknown")) if isinstance(raw_msg, dict) else "unknown",
+                    project_id=(
+                        str(raw_msg.get("project_id", "unknown"))
+                        if isinstance(raw_msg, dict)
+                        else "unknown"
+                    ),
                     message=f"Agent fallback: Failed to parse task message for {self.role}",
                     error=str(e),
                 )
@@ -402,9 +408,7 @@ class AgentMicroservice:
                 raise RuntimeError("Producer not initialized")
 
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
-            await producer.publish_model(
-                result_topic, result, key=task_msg.task_id
-            )
+            await producer.publish_model(result_topic, result, key=task_msg.task_id)
 
             # Emit completion event
             await self._emit_event(
@@ -504,9 +508,7 @@ class AgentMicroservice:
             topic = KafkaTopics.events_topic(project_id)
             producer = self.producer
             if producer is not None:
-                await producer.publish_model(
-                    topic, event, key=event_type
-                )
+                await producer.publish_model(topic, event, key=event_type)
         except Exception as e:
             logger.warning("Failed to emit event", error=str(e))
 
