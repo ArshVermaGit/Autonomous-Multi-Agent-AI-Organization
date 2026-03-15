@@ -56,9 +56,9 @@ class BaseAgent(ABC):
 
     def __init__(
         self,
-        llm_client=None,
-        tools: Dict[str, Callable] = None,
-        model_name: str = None,
+        llm_client: Optional[Any] = None,
+        tools: Optional[Dict[str, Callable]] = None,
+        model_name: Optional[str] = None,
         provider: str = "google",
     ):
         self.llm_client = llm_client
@@ -106,6 +106,7 @@ class BaseAgent(ABC):
             return self._mock_llm_response(messages)
 
         try:
+            assert self.llm_client is not None  # guarded above
             # ── Google Gemini ──────────────────────────────────────────────
             if self.provider == "google":
                 system_prompt = self.system_prompt
@@ -129,7 +130,7 @@ class BaseAgent(ABC):
                     )
 
                 response = await asyncio.to_thread(
-                    self.llm_client.models.generate_content,
+                    self.llm_client.models.generate_content,  # type: ignore[union-attr]
                     model=self.model_name,
                     contents=gemini_messages,
                     config=config,
@@ -145,10 +146,10 @@ class BaseAgent(ABC):
                     "max_tokens": max_tokens,
                 }
                 if response_format == "json_object":
-                    kwargs["response_format"] = {"type": "json_object"}
+                    kwargs["response_format"] = {"type": "json_object"}  # type: ignore[assignment]
 
                 response = await asyncio.to_thread(
-                    self.llm_client.chat.completions.create, **kwargs
+                    self.llm_client.chat.completions.create, **kwargs  # type: ignore[union-attr]
                 )
                 return response.choices[0].message.content
 
@@ -166,7 +167,7 @@ class BaseAgent(ABC):
                 ]
 
                 response = await asyncio.to_thread(
-                    self.llm_client.messages.create,
+                    self.llm_client.messages.create,  # type: ignore[union-attr]
                     model=self.model_name,
                     max_tokens=max_tokens,
                     system=system_content,
@@ -200,7 +201,7 @@ class BaseAgent(ABC):
                     },
                 }
 
-                response = await asyncio.to_thread(self.llm_client.converse, **kwargs)
+                response = await asyncio.to_thread(self.llm_client.converse, **kwargs)  # type: ignore[union-attr]
                 text = response["output"]["message"]["content"][0]["text"]
                 if response_format == "json_object":
                     text = _clean_json_response(text)
