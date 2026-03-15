@@ -1,7 +1,7 @@
 # Autonomous Multi-Agent AI Organization
 
 [![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
-[![Python](https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-Event_Driven-231F20?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
@@ -18,6 +18,7 @@
 > - **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
 > - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
 > - **Event-Driven Architecture**: Decoupled gRPC/Kafka backbone for high-concurrency autonomous workflows.
+- **Self-Critique Quality Loop**: Automated agent-level reflection and quality scoring for every task output.
 
 ---
 
@@ -32,6 +33,8 @@ You type a business idea. The system:
 5. **QA Agent** — Runs tests, detects edge cases and bugs
 6. **DevOps Agent** — Generates Terraform, Kubernetes manifests, CI/CD pipelines
 7. **Finance Agent** — Tracks token usage and enforces budget limits
+
+**Continuous Quality Loop**: After each phase, the Orchestrator runs a self-critique cycle where agents reflect on their own outputs, providing quality scores and approval signals before the project proceeds.
 
 Every agent runs asynchronously over Kafka. You watch it all happen live in the dashboard.
 
@@ -102,7 +105,7 @@ flowchart TB
 | **API Gateway**   | Go 1.22 · Fiber v2                                         |
 | **Orchestrator**  | Go · gRPC · DAG engine                                     |
 | **WebSocket Hub** | Go · Redis Pub/Sub                                         |
-| **AI Agents**     | Python 3.11 · Amazon Bedrock / OpenAI / Anthropic / Google |
+| **AI Agents**     | Python 3.12 · Amazon Bedrock / OpenAI / Anthropic / Google |
 | **Event Bus**     | Apache Kafka · ZooKeeper                                   |
 | **Database**      | PostgreSQL 15 · pgcrypto                                   |
 | **Cache**         | Redis 7                                                    |
