@@ -103,35 +103,35 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
     ) -> Dict[str, Any]:
         """Simulate the multi-step AWS deployment process."""
         steps = [
-            ("terraform init", "Initializing Terraform providers..."),
-            ("terraform plan", "Planning AWS resource changes..."),
-            ("terraform apply", "Creating VPC, subnets, security groups..."),
-            ("docker build", "Building backend and frontend images..."),
-            ("ecr push", "Pushing images to Amazon ECR..."),
-            ("ecs deploy", "Deploying ECS services..."),
-            ("health check", "Verifying service health..."),
+            ("git init", "Initializing local git repository..."),
+            ("git commit", "Committing generated source code..."),
+            ("github push", "Pushing branch to GitHub -> https://github.com/ai-org/projects"),
+            ("pod start", "Spinning up local Dev Pod for instant preview..."),
+            ("terraform init", "Initializing AWS infrastructure via Terraform..."),
+            ("docker build", "Building frontend and backend images..."),
+            ("ecs deploy", "Deploying to AWS ECS Fargate cluster..."),
+            ("health check", "Verifying live services..."),
         ]
 
-        for step, message in steps:
-            if context:
-                # emit progress event (simplified)
-                logger.info(message)
-
         import asyncio
-
-        await asyncio.sleep(0.5)  # Simulate processing
+        for step, message in steps:
+            logger.info(message)
+            if context:
+                await context.emit_event(
+                    type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": self.ROLE, "message": message, "level": "info"}})()
+                )
+            await asyncio.sleep(0.5)
 
         return {
-            "status": "deployed",
-            "public_url": f"https://{project_name}.example.com",
-            "backend_url": f"https://api.{project_name}.example.com",
-            "frontend_url": f"https://{project_name}.example.com",
+            "status": "deployed (simulated locally)",
+            "pod_url": "http://localhost:3000",
+            "github_repo": f"https://github.com/ai-org/{project_name}",
+            "public_url": "http://localhost:3000",
+            "backend_url": "http://localhost:8080",
+            "frontend_url": "http://localhost:3000",
             "ecs_cluster": f"{project_name}-cluster",
-            "rds_endpoint": f"{project_name}-db.abc123.us-east-1.rds.amazonaws.com",
-            "cloudfront_domain": "d1234abcd.cloudfront.net",
             "deployment_time_seconds": 187,
             "health_checks_passed": True,
-            "https_enabled": True,
             "autoscaling_enabled": True,
         }
 
@@ -959,24 +959,24 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
             ECR_BASE="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
             COMMIT=$(git rev-parse --short HEAD)
 
-            echo "🚀 Deploying $PROJECT @ $COMMIT"
+            echo "Deploying $PROJECT @ $COMMIT"
 
             # Login to ECR
             aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_BASE
 
             # Build and push backend
-            echo "📦 Building backend..."
+            echo "Building backend..."
             docker build -t $ECR_BASE/$PROJECT-backend:$COMMIT ./backend
             docker push $ECR_BASE/$PROJECT-backend:$COMMIT
             docker tag $ECR_BASE/$PROJECT-backend:$COMMIT $ECR_BASE/$PROJECT-backend:latest
 
             # Build and push frontend
-            echo "📦 Building frontend..."
+            echo "Building frontend..."
             docker build -t $ECR_BASE/$PROJECT-frontend:$COMMIT ./frontend
             docker push $ECR_BASE/$PROJECT-frontend:$COMMIT
 
             # Terraform apply
-            echo "🏗 Applying Terraform..."
+            echo "Applying Terraform..."
             cd terraform
             terraform init -upgrade
             terraform apply -auto-approve \\
@@ -994,6 +994,9 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
             echo "🏥 Health check: https://$ALB/health"
             curl -sf "https://$ALB/health" && echo "✅ Deployment successful!"
         """).strip()
+            curl -sf "https://$ALB/health" && echo "Deployment successful!"
+        """
+        ).strip()
 
     def _rollback_script(self, name: str) -> str:
         return textwrap.dedent(f"""
@@ -1018,6 +1021,9 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
 
             echo "✅ Rollback initiated. Monitor in CloudWatch."
         """).strip()
+            echo "Rollback initiated. Monitor in CloudWatch."
+        """
+        ).strip()
 
     def _generate_docker_compose(self, arch: Dict[str, Any]) -> str:
         return textwrap.dedent("""

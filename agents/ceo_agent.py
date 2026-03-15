@@ -57,7 +57,7 @@ Never over-engineer. Ship fast, iterate.
                     (),
                     {
                         "to_dict": lambda s: {
-                            "type": "agent_thinking",
+                            "type": "thinking",
                             "agent": "CEO",
                             "message": "Analyzing market opportunity and defining MVP scope...",
                             "level": "info",
@@ -103,6 +103,11 @@ Return a JSON object with EXACTLY this structure:
         except json.JSONDecodeError:
             logger.warning("CEO: JSON parse failed, using structured extraction")
             plan = self._extract_plan_fallback(business_idea)
+
+        if context:
+            await context.emit_event(
+                type("E", (), {"to_dict": lambda s: {"type": "thinking", "agent": "CEO", "message": f"MVP Strategy Drafted:\nVision: {plan.get('vision')}\nTarget: {plan.get('target_users')}\nFeatures: {len(plan.get('mvp_features', []))} core tasks.", "level": "info"}})()
+            )
 
         # Self-critique to validate completeness
         plan = await self.self_critique(plan)

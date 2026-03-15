@@ -29,12 +29,12 @@ AGENT_MODEL_DEFAULTS: dict[str, ModelConfig] = {
     # CEO — Strategic reasoning, structured JSON output
     "CEO": {
         "provider": "bedrock",
-        "model": "amazon.nova-pro-v1:0",
+        "model": "amazon.nova-lite-v1:0",
     },
     # CTO / Architect — Long-context system design and research
     "CTO": {
         "provider": "bedrock",
-        "model": "amazon.nova-pro-v1:0",
+        "model": "amazon.nova-lite-v1:0",
     },
     # Engineer (Backend) — Real, runnable code with minimal hallucinations
     "Engineer_Backend": {

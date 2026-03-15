@@ -109,7 +109,7 @@ You produce clear, actionable financial reports with specific dollar amounts.
 
     def _budget_status(self, utilization_pct: float) -> str:
         if utilization_pct < 60:
-            return "✅ On Track"
+            return "On Track"
         elif utilization_pct < 80:
             return "⚠️ Monitor Closely"
         elif utilization_pct < 95:

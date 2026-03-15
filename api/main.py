@@ -10,8 +10,10 @@ import os
 from typing import Any, Dict, List, Optional
 from contextlib import asynccontextmanager
 
+import boto3
 from dotenv import load_dotenv
 from google import genai
+from agents.model_registry import get_default
 
 from fastapi import (
     FastAPI,
@@ -37,15 +39,32 @@ logger = structlog.get_logger(__name__)
 
 load_dotenv()
 
-llm_client = None
-model_name = "gemini-2.5-flash"
-gemini_key = os.getenv("GEMINI_API_KEY")
+# clients
+gemini_client = None
+bedrock_client = None
 
-if gemini_key and gemini_key != "your-gemini-key":
-    llm_client = genai.Client(api_key=gemini_key)
-    logger.info("Initializing agents with Google Gemini LLM")
+# ── Google Gemini Setup ──────────────────────────────────────────
+gemini_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+if gemini_key and gemini_key != "your-gemini-key" and not gemini_key.startswith("AIza"):
+    gemini_client = genai.Client(api_key=gemini_key)
+    logger.info("Google Gemini client initialized")
+
+# ── Amazon Bedrock Setup ──────────────────────────────────────────
+aws_key = os.getenv("AWS_ACCESS_KEY_ID")
+aws_secret = os.getenv("AWS_SECRET_ACCESS_KEY")
+aws_region = os.getenv("AWS_REGION", "us-east-1")
+
+if aws_key and aws_key != "your-access-key-id":
+    bedrock_client = boto3.client(
+        "bedrock-runtime",
+        aws_access_key_id=aws_key,
+        aws_secret_access_key=aws_secret,
+        region_name=aws_region,
+    )
+    logger.info("Amazon Bedrock (Nova) client initialized", region=aws_region)
 else:
-    logger.warning("No Gemini API key found. Agents will run in mock mode.")
+    logger.warning("No AWS Bedrock credentials found. Agents will fall back to Gemini or Mock.")
+
 
 # ── Global Orchestrator ────────────────────────────────────────────
 orchestrator = OrchestratorEngine(budget_usd=200.0, output_dir="./output")
@@ -86,30 +105,49 @@ manager = ConnectionManager()
 # ── App Lifecycle ──────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Register all agents on startup."""
-    orchestrator.register_agent(
-        "CEO", CEOAgent(llm_client=llm_client, model_name=model_name)
-    )
-    orchestrator.register_agent(
-        "CTO", CTOAgent(llm_client=llm_client, model_name=model_name)
-    )
-    orchestrator.register_agent(
-        "Engineer_Backend",
-        EngineerAgent(mode="backend", llm_client=llm_client, model_name=model_name),
-    )
-    orchestrator.register_agent(
-        "Engineer_Frontend",
-        EngineerAgent(mode="frontend", llm_client=llm_client, model_name=model_name),
-    )
-    orchestrator.register_agent(
-        "QA", QAAgent(llm_client=llm_client, model_name=model_name)
-    )
-    orchestrator.register_agent(
-        "DevOps", DevOpsAgent(llm_client=llm_client, model_name=model_name)
-    )
-    orchestrator.register_agent(
-        "Finance", FinanceAgent(llm_client=llm_client, model_name=model_name)
-    )
+    """Register all agents on startup using model_registry defaults."""
+    
+    def get_agent_config(role: str):
+        config = get_default(role)
+        provider = config["provider"]
+        model = config["model"]
+        
+        client = None
+        if provider == "google":
+            client = gemini_client
+        elif provider == "bedrock":
+            client = bedrock_client
+            
+        return client, model, provider
+
+    # CEO
+    client, model, provider = get_agent_config("CEO")
+    orchestrator.register_agent("CEO", CEOAgent(llm_client=client, model_name=model, provider=provider))
+    
+    # CTO
+    client, model, provider = get_agent_config("CTO")
+    orchestrator.register_agent("CTO", CTOAgent(llm_client=client, model_name=model, provider=provider))
+    
+    # Backend Engineer
+    client, model, provider = get_agent_config("Engineer_Backend")
+    orchestrator.register_agent("Engineer_Backend", EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider))
+    
+    # Frontend Engineer
+    client, model, provider = get_agent_config("Engineer_Frontend")
+    orchestrator.register_agent("Engineer_Frontend", EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider))
+    
+    # QA
+    client, model, provider = get_agent_config("QA")
+    orchestrator.register_agent("QA", QAAgent(llm_client=client, model_name=model, provider=provider))
+    
+    # DevOps
+    client, model, provider = get_agent_config("DevOps")
+    orchestrator.register_agent("DevOps", DevOpsAgent(llm_client=client, model_name=model, provider=provider))
+    
+    # Finance
+    client, model, provider = get_agent_config("Finance")
+    orchestrator.register_agent("Finance", FinanceAgent(llm_client=client, model_name=model, provider=provider))
+    
     logger.info("All agents registered and ready")
     yield
 
@@ -134,16 +172,10 @@ app.add_middleware(
 
 # ── Request/Response Models ────────────────────────────────────────
 class StartProjectRequest(BaseModel):
-    business_idea: str
-    budget_usd: float = 200.0
+    idea: str
+    budget: Dict[str, Any] = {"max_cost_usd": 200.0}
+    name: Optional[str] = ""
     constraints: Optional[Dict[str, Any]] = None
-
-
-class ProjectResponse(BaseModel):
-    project_id: str
-    status: str
-    message: str
-    started_at: str
 
 
 # ── REST Endpoints ─────────────────────────────────────────────────
@@ -159,24 +191,26 @@ async def root():
 
 
 @app.get("/health")
+@app.get("/healthz")
 async def health():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
+        "uptime_seconds": 3600, # Mock uptime
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
 
 
-@app.post("/api/projects", response_model=ProjectResponse)
+@app.post("/v1/projects")
 async def start_project(request: StartProjectRequest):
     """
     MAIN ENDPOINT: Submit a business idea and launch the AI company.
     Returns a project_id for WebSocket streaming and status polling.
     """
-    if len(request.business_idea.strip()) < 10:
+    if len(request.idea.strip()) < 5:
         raise HTTPException(
-            status_code=400, detail="Business idea too short (min 10 chars)"
+            status_code=400, detail="Idea too short"
         )
 
     # Wire up WebSocket event broadcasting
@@ -184,22 +218,30 @@ async def start_project(request: StartProjectRequest):
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.business_idea, user_constraints=request.constraints or {}
+        business_idea=request.idea, 
+        user_constraints=request.constraints or {}
     )
 
     # Subscribe the event broadcaster for this project
     orchestrator.subscribe_events(broadcast_event)
 
     logger.info("Project started via API", project_id=project_id)
-    return ProjectResponse(
-        project_id=project_id,
-        status="started",
-        message=f"AI company launched! Connect WebSocket to /ws/{project_id} for live updates.",
-        started_at=datetime.utcnow().isoformat(),
-    )
+    # Match Dashboard Project interface
+    return {
+        "id": project_id,
+        "name": request.name or "New Project",
+        "description": request.idea,
+        "status": "running",
+        "budget_usd": request.budget.get("max_cost_usd", 200.0),
+        "spent_usd": 0.0,
+        "progress_pct": 0,
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "created_at": datetime.utcnow().isoformat()
+    }
 
 
-@app.get("/api/projects/{project_id}")
+@app.get("/v1/projects/{project_id}")
 async def get_project_status(project_id: str):
     """Get full project status including task graph, cost, and artifacts."""
     status = orchestrator.get_project_status(project_id)
@@ -224,20 +266,26 @@ async def list_projects():
     }
 
 
-@app.get("/api/projects/{project_id}/artifacts")
-async def get_artifacts(project_id: str):
+@app.get("/v1/projects/{project_id}/tasks")
+async def get_project_tasks(project_id: str):
     status = orchestrator.get_project_status(project_id)
     if not status:
         raise HTTPException(status_code=404, detail="Project not found")
-    return status.get("artifacts", {})
+    # Wrap tasks in list as expected by Dashboard
+    return status.get("tasks", [])
 
 
-@app.get("/api/projects/{project_id}/cost")
+@app.get("/v1/projects/{project_id}/cost")
 async def get_cost_report(project_id: str):
     status = orchestrator.get_project_status(project_id)
     if not status:
         raise HTTPException(status_code=404, detail="Project not found")
-    return status.get("cost_report", {})
+    
+    cost_report = status.get("cost_report", {})
+    return {
+        "total_usd": cost_report.get("total_usd", 0.0),
+        "by_agent": cost_report.get("by_agent", {})
+    }
 
 
 @app.get("/api/projects/{project_id}/decisions")
@@ -340,6 +388,7 @@ async def websocket_events(websocket: WebSocket, project_id: str):
                         project_id,
                         {
                             "type": "system",
+                            "agent": "Orchestrator",
                             "message": "HITL constraint cleared by user.",
                         },
                     )

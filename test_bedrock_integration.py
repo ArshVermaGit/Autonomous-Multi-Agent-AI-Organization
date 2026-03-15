@@ -1,6 +1,10 @@
 import os
 import json
 import boto3
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 
 def test_bedrock_nova():
@@ -27,8 +31,10 @@ def test_bedrock_nova():
         embedding = response_body.get("embedding", [])
         print(f"✅ Success! Fetched {len(embedding)}-dimensional Nova embedding.")
 
+        client = boto3.client('bedrock-runtime', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+        
         # Test Text Generation (Nova Lite/Pro)
-        print("\n2. Testing amazon.nova-lite-v1:0...")
+        print("\nTesting amazon.nova-lite-v1:0...")
         prompt_payload = {
             "messages": [
                 {
@@ -57,6 +63,15 @@ def test_bedrock_nova():
             .get("content", [{}])[0]
             .get("text", "")
         )
+        
+        response_body = json.loads(response['body'].read().decode('utf-8'))
+        
+        # Bedrock response parsing for Nova
+        output = response_body.get('output', {})
+        message = output.get('message', {})
+        content = message.get('content', [{}])
+        answer = content[0].get('text', 'No response text found')
+        
         print(f"✅ Success! Nova Lite says: {answer}")
 
     except Exception as e:

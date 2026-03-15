@@ -1,10 +1,10 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { AgentEvent, WsStatus } from '@/hooks/useWebSocket'
 import { AGENT_COLORS, AGENT_EMOJI } from '@/lib/api'
-import { Wifi, WifiOff, Loader2, Trash2, Radio } from 'lucide-react'
+import { Wifi, WifiOff, Loader2, Trash2, Sparkles } from 'lucide-react'
 import { clsx } from 'clsx'
 
 interface AgentFeedProps {
@@ -16,47 +16,47 @@ interface AgentFeedProps {
 }
 
 const TYPE_STYLES: Record<string, string> = {
-    thinking: 'text-blue-400',
-    task_start: 'text-cyan-400',
-    task_complete: 'text-emerald-400',
+    thinking: 'text-zinc-400',
+    task_start: 'text-emerald-400',
+    task_complete: 'text-cyan-400',
     task_failed: 'text-red-400',
     phase_change: 'text-purple-400',
     cost_update: 'text-amber-400',
-    system: 'text-slate-400',
+    system: 'text-zinc-500',
 }
 
 const TYPE_ICON: Record<string, string> = {
-    thinking: '🧠',
-    task_start: '▶',
-    task_complete: '✓',
-    task_failed: '✗',
-    phase_change: '↗',
-    cost_update: '$',
-    system: '·',
+    thinking: '💭',
+    task_start: '▶️',
+    task_complete: '✅',
+    task_failed: '❌',
+    phase_change: '🔄',
+    cost_update: '💵',
+    system: '⚙️',
 }
 
 function StatusIndicator({ status, latency }: { status: WsStatus; latency?: number | null }) {
     return (
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs font-mono">
             {status === 'connected' && (
                 <>
-                    <span className="flex items-center gap-1 text-emerald-400">
-                        <Wifi size={12} />
+                    <span className="flex items-center gap-1.5 text-emerald-500">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         Live
                     </span>
                     {latency != null && (
-                        <span className="text-text-muted">{latency}ms</span>
+                        <span className="text-zinc-600">{latency}ms</span>
                     )}
                 </>
             )}
             {status === 'connecting' && (
-                <span className="flex items-center gap-1 text-amber-400">
+                <span className="flex items-center gap-1.5 text-amber-500">
                     <Loader2 size={12} className="animate-spin" />
                     Connecting...
                 </span>
             )}
             {(status === 'disconnected' || status === 'error') && (
-                <span className="flex items-center gap-1 text-red-400">
+                <span className="flex items-center gap-1.5 text-red-500">
                     <WifiOff size={12} />
                     Offline
                 </span>
@@ -68,96 +68,127 @@ function StatusIndicator({ status, latency }: { status: WsStatus; latency?: numb
 export default function AgentFeed({ events, status, latency, onClear, maxVisible = 100 }: AgentFeedProps) {
     const bottomRef = useRef<HTMLDivElement>(null)
 
-    // Auto-scroll to bottom when new events arrive
+    // Auto-scroll to bottom inside the feed
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [events.length])
 
-    const visible = events.slice(0, maxVisible)
+    const groupedThreads = useMemo(() => {
+        // events is reverse-chronological (newest first). Let's make it chronological.
+        const chronEvents = [...events].slice(0, maxVisible).reverse();
+        
+        type ThreadedEvent = AgentEvent & { subEvents: AgentEvent[] };
+        const threads: ThreadedEvent[] = [];
+        const activeTaskByAgent: Record<string, ThreadedEvent> = {};
+        
+        for (const event of chronEvents) {
+            if (event.type === 'task_start' || event.type === 'phase_change') {
+                const thread = { ...event, subEvents: [] };
+                threads.push(thread);
+                activeTaskByAgent[event.agent] = thread;
+            } else if (event.type === 'task_complete' || event.type === 'task_failed') {
+                // Top level, but clears the active task so future loose thoughts don't incorrectly attach
+                threads.push({ ...event, subEvents: [] });
+                delete activeTaskByAgent[event.agent];
+            } else {
+                if (activeTaskByAgent[event.agent] && event.type !== 'system') {
+                    activeTaskByAgent[event.agent].subEvents.push(event);
+                } else {
+                    threads.push({ ...event, subEvents: [] });
+                }
+            }
+        }
+        return threads;
+    }, [events, maxVisible]);
 
     return (
-        <div className="card flex flex-col h-[480px] bg-[#09090b] border border-[#27272a] shadow-2xl relative overflow-hidden rounded-xl">
-            {/* Header (Terminal Window Style) */}
-            <div className="flex items-center justify-between mb-0 flex-shrink-0 bg-[#18181b] border-b border-[#27272a] px-3 py-2 rounded-t-xl z-10">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500/80 border border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 border border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 border border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    </div>
-                    <div className="flex items-center gap-2 border-l border-[#27272a] pl-4">
-                        <Radio size={12} className="text-blue-400" />
-                        <h2 className="text-xs font-mono text-zinc-400">bash — agent-feed</h2>
-                    </div>
-                    <span className="ml-3 text-[10px] text-zinc-600 font-mono bg-black/50 px-2 py-0.5 rounded-full border border-[#27272a]">
-                        {events.length} events
-                    </span>
-                </div>
+        <div className="flex flex-col h-[600px] bg-[#09090b] border border-white/5 shadow-2xl relative overflow-hidden rounded-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-shrink-0 bg-[#09090b]/80 backdrop-blur-md border-b border-white/5 px-4 py-3 z-10 w-full absolute top-0">
                 <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                        <Sparkles size={16} />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-semibold text-white tracking-tight">Agent Terminal</h2>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
+                                {events.length} Events Processed
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
                     <StatusIndicator status={status} latency={latency} />
                     {onClear && events.length > 0 && (
-                        <button onClick={onClear} className="btn-ghost p-1" title="Clear feed">
-                            <Trash2 size={13} />
+                        <button onClick={onClear} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all border border-white/5" title="Clear feed">
+                            <Trash2 size={14} />
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Feed */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 font-mono text-[11px] leading-relaxed custom-scrollbar">
-                {visible.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-text-muted">
-                        <div className="w-12 h-12 rounded-full bg-[#1c1c28] flex items-center justify-center text-2xl">
-                            🤖
+            {/* Feed Content */}
+            <div className="flex-1 overflow-y-auto px-6 pt-20 pb-6 space-y-4 font-sans text-sm custom-scrollbar bg-gradient-to-b from-[#09090b] to-[#121214]">
+                {groupedThreads.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-500 animate-fade-in">
+                        <div className="w-16 h-16 rounded-full bg-emerald-500/5 flex items-center justify-center text-3xl border border-white/5">
+                            <Sparkles className="text-emerald-500" size={24} />
                         </div>
-                        <p>Waiting for agent activity...</p>
-                        <p className="text-xs opacity-60">Start a new project to see agents think</p>
+                        <p className="text-zinc-400">Awaiting Agent Activity...</p>
                     </div>
                 ) : (
-                    visible.map((event) => {
-                        const color = AGENT_COLORS[event.agent] || '#94a3b8'
-                        const emoji = AGENT_EMOJI[event.agent] || '🤖'
-                        const icon = TYPE_ICON[event.type] || '·'
-                        const cls = TYPE_STYLES[event.type] || 'text-slate-400'
+                    groupedThreads.map((thread) => {
+                        const emoji = AGENT_EMOJI[thread.agent] || ''
+                        const icon = TYPE_ICON[thread.type] || '·'
+                        const cls = TYPE_STYLES[thread.type] || 'text-zinc-500'
+
+                        // If it's a project complete link, make it clickable
+                        const isLink = thread.message.includes('http://');
+                        const msgHtml = isLink ? (
+                            <span dangerouslySetInnerHTML={{__html: thread.message.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-emerald-400 underline hover:text-emerald-300 transition-colors">$1</a>')}} />
+                        ) : thread.message;
 
                         return (
                             <div
-                                key={event.id}
-                                className="flex items-start gap-4 hover:bg-[#18181b] px-2 py-1 -mx-2 rounded transition-colors"
+                                key={thread.id}
+                                className="group flex flex-col gap-1 w-full animate-slide-up bg-white/[0.02] border border-white/5 rounded-xl p-3"
                             >
-                                {/* Timestamp */}
-                                <span className="text-[10px] text-text-muted w-16 flex-shrink-0 pt-0.5">
-                                    {new Date(event.timestamp).toLocaleTimeString('en', { hour12: false })}
-                                </span>
-
-                                {/* Agent text box */}
-                                <div className="flex items-start gap-2 w-full">
-                                    <span className="text-zinc-500 font-bold whitespace-nowrap pt-0.5">
-                                        {`[${event.agent.replace('Engineer_', 'Eng_').toUpperCase()}]`}
-                                    </span>
-
-                                    {/* Type icon */}
-                                    <span className={clsx('w-4 flex-shrink-0 text-center pt-0.5', cls)}>
-                                        {icon}
-                                    </span>
-
-                                    {/* Message content */}
-                                    <span className={clsx("flex-1 whitespace-pre-wrap break-words", cls)}>
-                                        {event.message}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-mono text-zinc-300">
+                                            <span>{emoji}</span>
+                                            <span className="font-semibold">{thread.agent.replace('Engineer_', 'Eng_')}</span>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 font-mono">
+                                        {new Date(thread.timestamp).toLocaleTimeString('en', { hour12: false })}
                                     </span>
                                 </div>
+                                
+                                <div className="flex items-start gap-3 mt-2">
+                                    <div className={clsx("flex-1 text-[14px] leading-relaxed font-medium flex gap-2 items-start", cls)}>
+                                        <span className="mt-0.5 opacity-80">{icon}</span> 
+                                        <span>{msgHtml}</span>
+                                    </div>
+                                </div>
 
-                                {/* Trace ID (hover only) */}
-                                {event.trace_id && (
-                                    <span className="text-[10px] text-text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                        {event.trace_id.slice(0, 8)}
-                                    </span>
+                                {thread.subEvents.length > 0 && (
+                                    <div className="flex flex-col gap-3 mt-3 pl-4 border-l-2 border-white/10 ml-2 py-1">
+                                        {thread.subEvents.map(sub => (
+                                            <div key={sub.id} className={clsx("text-[13px] leading-relaxed font-mono tracking-tight", TYPE_STYLES[sub.type] || 'text-zinc-400')}>
+                                                {sub.message.split('\\n').map((line, i) => (
+                                                    <div key={i} className="mb-1 opacity-80 hover:opacity-100 transition-opacity">{line}</div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         )
                     })
                 )}
-                <div ref={bottomRef} />
+                <div ref={bottomRef} className="h-4" />
             </div>
         </div>
     )

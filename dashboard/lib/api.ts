@@ -176,16 +176,18 @@ export const AGENT_COLORS: Record<string, string> = {
     QA: '#f59e0b',
     DevOps: '#ec4899',
     Finance: '#6b7280',
-    system: '#4b5563',
+    Orchestrator: '#4b5563',
+    system: '#3f3f46',
 }
 
 export const AGENT_EMOJI: Record<string, string> = {
-    CEO: '👔',
-    CTO: '🏗️',
+    CEO: '👑',
+    CTO: '🛡️',
     Engineer_Backend: '⚙️',
     Engineer_Frontend: '🎨',
-    QA: '🔍',
+    QA: '🧪',
     DevOps: '🚀',
     Finance: '💰',
+    Orchestrator: '🧠',
     system: '🤖',
 }
