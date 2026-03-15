@@ -3,7 +3,7 @@
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, LayoutDashboard, Search, Workflow, Zap, ShieldCheck, Terminal } from 'lucide-react';
 import Image from 'next/image';
 
 export default function LandingPage() {
@@ -17,17 +17,6 @@ export default function LandingPage() {
     }, [status, router]);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-gray-300 font-sans selection:bg-emerald-500/30 flex flex-col">
-            {/* ── Top Bar (App-like header) ───────────────────────── */}
-            <div className="h-10 w-full shrink-0 bg-[#0d0d12] border-b border-[#27272a] flex items-center justify-between px-4 sticky top-0 z-50">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                </div>
-                <div className="text-xs text-gray-500 flex items-center gap-2">
-                    <Terminal size={12} />
-                    <span>proximus-nova — bash — 80x24</span>
         <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-purple-500/30 flex flex-col relative overflow-hidden">
             
             {/* ── Top Bar ───────────────────────── */}
