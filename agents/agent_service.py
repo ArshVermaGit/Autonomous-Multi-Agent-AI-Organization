@@ -18,7 +18,7 @@ import os
 import signal
 import time
 import traceback
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import structlog
 
@@ -149,9 +149,9 @@ class AgentMicroservice:
         ) or KafkaTopics.task_topic_for_role(self.role)
         self.group_id = os.getenv("KAFKA_CONSUMER_GROUP", f"{self.role.lower()}-group")
         self.running = True
-        self.agent = None
-        self.consumer = None
-        self.producer = None
+        self.agent: Optional[Any] = None
+        self.consumer: Optional["KafkaConsumerClient"] = None
+        self.producer: Optional["KafkaProducerClient"] = None
         self._tasks_done = 0
         self._tasks_failed = 0
 
@@ -180,11 +180,12 @@ class AgentMicroservice:
         await self._consume_loop()
         heartbeat_task.cancel()
 
-    def _shutdown(self):
+    def _shutdown(self, *args):
         logger.info("Shutdown signal received", role=self.role)
         self.running = False
-        if self.consumer:
-            self.consumer.stop()
+        consumer = self.consumer
+        if consumer:
+            consumer.stop()
 
     async def _heartbeat_loop(self):
         """Periodically ping the Go Health Monitor via Kafka."""
@@ -194,14 +195,15 @@ class AgentMicroservice:
 
         while self.running:
             try:
-                if self.producer:
+                producer = self.producer
+                if producer:
                     hb_topic = KafkaTopics.heartbeat_topic()
                     payload = {
                         "agent_role": self.role,
                         "pod_id": pod_id,
                         "status": "healthy",
                     }
-                    await self.producer.publish_json(
+                    await producer.publish_json(
                         hb_topic, payload, key=f"{self.role}-{pod_id}"
                     )
             except Exception as e:
@@ -213,20 +215,26 @@ class AgentMicroservice:
         """Main consumer loop — pull TaskMessages, process, publish ResultMessage."""
         logger.info("Consumer loop started", role=self.role)
 
-        async for raw_msg in self.consumer.consume_stream():
+        consumer = self.consumer
+        if not consumer:
+            logger.error("Consumer not initialized")
+            return
+
+        async for raw_msg in consumer.consume_stream():
             if not self.running:
                 break
 
             try:
                 task_msg = TaskMessage(**raw_msg)
             except Exception as e:
+                raw_preview = str(raw_msg)
                 logger.error(
                     "Failed to parse TaskMessage",
                     error=str(e),
-                    raw_preview=str(raw_msg)[:500],
+                    raw_preview=raw_preview[:500] if len(raw_preview) > 500 else raw_preview,
                 )
                 await self._emit_error_event(
-                    project_id=raw_msg.get("project_id", "unknown"),
+                    project_id=str(raw_msg.get("project_id", "unknown")) if isinstance(raw_msg, dict) else "unknown",
                     message=f"Agent fallback: Failed to parse task message for {self.role}",
                     error=str(e),
                 )
@@ -265,9 +273,13 @@ class AgentMicroservice:
 
         # Patch the resolved client onto the agent instance for this task only.
         # This is safe — agent pods process tasks sequentially per role.
-        self.agent.llm_client = llm_client
-        self.agent.model_name = model_name
-        self.agent.provider = provider
+        if self.agent is None:
+            raise RuntimeError("Agent not initialized")
+        agent = self.agent
+        assert agent is not None
+        agent.llm_client = llm_client
+        agent.model_name = model_name
+        agent.provider = provider
 
         logger.info(
             "Task LLM resolved",
@@ -305,7 +317,10 @@ class AgentMicroservice:
                 max_retries = task_msg.max_retries
                 status = "running"
 
-            output = await self.agent.execute_task(
+            agent = self.agent
+            if not agent:
+                raise RuntimeError("Agent not initialized")
+            output = await agent.execute_task(
                 task=_TaskProxy(),
                 context=_build_minimal_context(task_msg),
             )
@@ -336,8 +351,12 @@ class AgentMicroservice:
                 trace_id=task_msg.trace_id,
             )
 
+            producer = self.producer
+            if not producer:
+                raise RuntimeError("Producer not initialized")
+
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
-            await self.producer.publish_model(
+            await producer.publish_model(
                 result_topic, result, key=task_msg.task_id
             )
 
@@ -367,7 +386,7 @@ class AgentMicroservice:
                 "Task failed",
                 task_id=task_msg.task_id,
                 error=err_str,
-                trace=traceback.format_exc()[-500:],
+                trace=traceback.format_exc()[-500:],  # type: ignore[index]
                 role=self.role,
             )
 
@@ -382,15 +401,17 @@ class AgentMicroservice:
                 trace_id=task_msg.trace_id,
             )
 
+            if self.producer is None:
+                raise RuntimeError("Producer not initialized")
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
-            await self.producer.publish_model(
+            await self.producer.publish_model(  # type: ignore[union-attr]
                 result_topic, result, key=task_msg.task_id
             )
 
             await self._emit_event(
                 project_id=task_msg.project_id,
                 event_type="task_failed",
-                message=f"[{self.role}] ❌ Failed: {task_msg.task_name} — {err_str[:100]}",
+                message=f"[{self.role}] Failed: {task_msg.task_name} — {err_str[:100]}",  # type: ignore[index]
                 data={"task_id": task_msg.task_id, "error": err_str},
                 level="error",
                 trace_id=task_msg.trace_id,
@@ -435,7 +456,11 @@ class AgentMicroservice:
                 trace_id=trace_id,
             )
             topic = KafkaTopics.events_topic(project_id)
-            await self.producer.publish_model(topic, event, key=event_type)
+            producer = self.producer
+            if producer is not None:
+                await producer.publish_model(
+                    topic, event, key=event_type
+                )
         except Exception as e:
             logger.warning("Failed to emit event", error=str(e))
 
