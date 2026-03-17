@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Key, Settings as SettingsIcon, Shield, Cpu, BookOpen, Check, Trash2, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Key, Settings as SettingsIcon, Shield, Cpu, BookOpen, Check, Trash2, Plus, Loader2, Sparkles } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,20 +70,20 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 function StatusDot({ active }: { active: boolean }) {
     return (
         <span
-            className={`inline-block w-2.5 h-2.5 rounded-full mr-2 ${active ? 'bg-emerald-500 ring-4 ring-emerald-500/20' : 'bg-slate-300'}`}
+            className={`inline-block w-2.5 h-2.5 rounded-full mr-2 ${active ? 'bg-emerald-500 ring-4 ring-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-700'}`}
         />
     );
 }
 
 function SectionHeader({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
     return (
-        <div className="mb-6 flex gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                <Icon size={20} />
+        <div className="mb-8 flex gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20 shadow-inner">
+                <Icon size={24} />
             </div>
             <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h2>
-                <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+                <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">{subtitle}</p>
             </div>
         </div>
     );
@@ -91,7 +91,7 @@ function SectionHeader({ icon: Icon, title, subtitle }: { icon: any; title: stri
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`bg-white border border-slate-200 rounded-2xl p-6 shadow-sm ${className}`}>
+        <div className={`bg-white/5 border border-white/5 rounded-[2rem] p-8 shadow-2xl backdrop-blur-3xl ${className}`}>
             {children}
         </div>
     );
@@ -149,45 +149,45 @@ function LLMKeysSection() {
             />
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="animate-spin text-purple-600" />
+                    <Loader2 className="animate-spin text-purple-500" />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {providers.map((provider) => {
                         const providerKeys = keys.filter(k => k.provider === provider);
                         const isAdding = addingFor === provider;
                         return (
-                            <div key={provider} className={`border rounded-2xl p-5 transition-all ${isAdding ? 'border-purple-300 bg-purple-50/30' : 'border-slate-100 bg-slate-50/30'}`}>
-                                <div className="flex items-center justify-between mb-4">
+                            <div key={provider} className={`border rounded-[1.5rem] p-6 transition-all duration-300 ${isAdding ? 'border-purple-500/50 bg-purple-500/5' : 'border-white/5 bg-white/5 hover:bg-white/[0.08]'}`}>
+                                <div className="flex items-center justify-between mb-6">
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-800">
+                                        <span className="text-base font-bold text-white">
                                             {PROVIDER_LABELS[provider]}
                                         </span>
-                                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                                             {providerKeys.length} active key{providerKeys.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                     <button
                                         onClick={() => setAddingFor(isAdding ? null : provider)}
-                                        className={`p-2 rounded-xl transition-all ${isAdding ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                        className={`p-2.5 rounded-xl transition-all active:scale-95 ${isAdding ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
                                     >
-                                        {isAdding ? <ArrowLeft size={16} /> : <Plus size={16} />}
+                                        {isAdding ? <ArrowLeft size={18} /> : <Plus size={18} />}
                                     </button>
                                 </div>
 
                                 {/* Existing keys */}
                                 {providerKeys.length > 0 && !isAdding && (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         {providerKeys.map(key => (
-                                            <div key={key.id} className="flex items-center justify-between bg-white border border-slate-100 rounded-xl px-3 py-2.5 shadow-sm">
-                                                <div className="flex items-center min-w-0">
+                                            <div key={key.id} className="flex items-center justify-between bg-black/40 border border-white/5 rounded-xl px-4 py-3 shadow-inner group/key">
+                                                <div className="flex items-center min-w-0 gap-2">
                                                     <StatusDot active={key.is_valid} />
-                                                    <span className="text-xs text-slate-700 font-mono truncate">{key.key_hint}</span>
-                                                    <span className="text-[10px] text-slate-400 font-medium ml-2 px-1.5 py-0.5 bg-slate-100 rounded-md uppercase">{key.label}</span>
+                                                    <span className="text-xs text-slate-300 font-mono truncate">{key.key_hint}</span>
+                                                    <span className="text-[10px] text-slate-500 font-bold ml-1 px-1.5 py-0.5 bg-white/5 rounded-md uppercase tracking-tight">{key.label}</span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleDelete(key.id)}
-                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover/key:opacity-100"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
@@ -198,41 +198,41 @@ function LLMKeysSection() {
 
                                 {/* Add key form */}
                                 {isAdding && (
-                                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Secret Key</label>
+                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Secret Key</label>
                                             <input
                                                 type="password"
                                                 placeholder="sk-..."
                                                 value={form.api_key}
                                                 onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
-                                                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 transition-all"
+                                                className="w-full text-sm bg-black/40 border border-white/10 rounded-xl px-4 py-3 font-mono text-white placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/50 transition-all"
                                             />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Label</label>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Label</label>
                                             <input
                                                 type="text"
                                                 placeholder="e.g. Production, Testing"
                                                 value={form.label}
                                                 onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                                                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 transition-all"
+                                                className="w-full text-sm bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/50 transition-all"
                                             />
                                         </div>
-                                        {error && <p className="text-xs text-red-500 ml-1">{error}</p>}
+                                        {error && <p className="text-xs text-red-400 ml-1">{error}</p>}
                                         <button
                                             onClick={() => handleSave(provider)}
                                             disabled={saving}
-                                            className="w-full text-sm px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-all font-bold shadow-lg shadow-purple-500/20"
+                                            className="w-full text-sm px-4 py-3.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition-all font-bold shadow-lg shadow-purple-500/20 active:scale-[0.98]"
                                         >
-                                            {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : 'Save API Key'}
+                                            {saving ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'Save API Key'}
                                         </button>
                                     </div>
                                 )}
 
                                 {!isAdding && providerKeys.length === 0 && (
-                                    <div className="py-2 text-center border-2 border-dashed border-slate-100 rounded-xl">
-                                        <p className="text-[11px] text-slate-400 font-medium">No keys configured</p>
+                                    <div className="py-4 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                                        <p className="text-[11px] text-slate-600 font-bold uppercase tracking-widest">No keys configured</p>
                                     </div>
                                 )}
                             </div>
@@ -290,87 +290,89 @@ function AgentPrefsSection() {
     };
 
     return (
-        <Card className="overflow-hidden">
-            <SectionHeader
-                icon={Cpu}
-                title="Agent Model Preferences"
-                subtitle="Override platform defaults by assigning specific models to each agent role."
-            />
+        <Card className="p-0 overflow-hidden border-white/5">
+            <div className="p-8 pb-4">
+                <SectionHeader
+                    icon={Cpu}
+                    title="Agent Model Preferences"
+                    subtitle="Override platform defaults by assigning specific models to each agent role."
+                />
+            </div>
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <Loader2 className="animate-spin text-purple-600" />
+                    <Loader2 className="animate-spin text-purple-500" />
                 </div>
             ) : (
-                <div className="overflow-x-auto -mx-6">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 border-y border-slate-100">
-                                <th className="text-left py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent Role</th>
-                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Provider</th>
-                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Model</th>
-                                <th className="text-left py-3 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">API Key</th>
-                                <th className="text-left py-3 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                            <tr className="bg-white/5 border-y border-white/5">
+                                <th className="text-left py-4 px-8 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Agent Role</th>
+                                <th className="text-left py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Provider</th>
+                                <th className="text-left py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Model</th>
+                                <th className="text-left py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">API Key Override</th>
+                                <th className="text-right py-4 px-8 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-white/5">
                             {prefs.map(pref => {
                                 const providerKeys = keys.filter(k => k.provider === pref.provider && k.is_valid);
                                 const isSaving = saving === pref.agent_role;
                                 return (
-                                    <tr key={pref.agent_role} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="py-4 px-6 font-bold text-slate-800 text-xs">
+                                    <tr key={pref.agent_role} className="hover:bg-white/[0.03] transition-colors group">
+                                        <td className="py-5 px-8 font-bold text-white text-sm">
                                             {AGENT_LABELS[pref.agent_role] ?? pref.agent_role}
                                         </td>
-                                        <td className="py-4 px-4">
+                                        <td className="py-5 px-4">
                                             <select
                                                 value={pref.provider}
                                                 onChange={e => handleUpdate(pref, 'provider', e.target.value)}
-                                                className="text-xs font-semibold border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer"
+                                                className="text-xs font-bold bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/50 transition-all cursor-pointer hover:bg-white/10"
                                             >
                                                 {Object.entries(PROVIDER_LABELS).map(([v, l]) => (
-                                                    <option key={v} value={v}>{l}</option>
+                                                    <option key={v} value={v} className="bg-slate-900">{l}</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-4 px-4">
+                                        <td className="py-5 px-4">
                                             <select
                                                 value={pref.model_name}
                                                 onChange={e => handleUpdate(pref, 'model_name', e.target.value)}
-                                                className="text-xs font-medium border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer"
+                                                className="text-xs font-semibold bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/50 transition-all cursor-pointer hover:bg-white/10"
                                             >
                                                 {MODEL_OPTIONS[pref.provider]?.map(m => (
-                                                    <option key={m} value={m}>{m}</option>
+                                                    <option key={m} value={m} className="bg-slate-900">{m}</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-4 px-4">
+                                        <td className="py-5 px-4">
                                             <select
                                                 value={pref.key_id ?? ''}
                                                 onChange={e => handleUpdate(pref, 'key_id', e.target.value || '')}
-                                                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-400 bg-white transition-all cursor-pointer min-w-[140px]"
+                                                className="text-xs bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500/50 transition-all cursor-pointer min-w-[160px] hover:bg-white/10"
                                             >
-                                                <option value="">Platform Default</option>
+                                                <option value="" className="bg-slate-900 italic">Platform Default</option>
                                                 {providerKeys.map(k => (
-                                                    <option key={k.id} value={k.id}>{k.label} ({k.key_hint})</option>
+                                                    <option key={k.id} value={k.id} className="bg-slate-900">{k.label} ({k.key_hint})</option>
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="py-4 px-6 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <td className="py-5 px-8 text-right">
+                                            <div className="flex items-center justify-end gap-3">
                                                 {isSaving ? (
-                                                    <Loader2 size={12} className="animate-spin text-purple-600" />
+                                                    <Loader2 size={14} className="animate-spin text-purple-500" />
                                                 ) : (
-                                                    <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider ${pref.is_default ? 'bg-slate-100 text-slate-500' : 'bg-purple-600 text-white shadow-sm'}`}>
+                                                    <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-widest ${pref.is_default ? 'bg-white/5 text-slate-500' : 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'}`}>
                                                         {pref.is_default ? 'Default' : 'Custom'}
                                                     </span>
                                                 )}
                                                 {!pref.is_default && (
                                                     <button
                                                         onClick={() => handleReset(pref.agent_role)}
-                                                        className="p-1 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="p-1.5 text-slate-600 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100"
                                                         title="Reset to default"
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 )}
                                             </div>
@@ -390,33 +392,37 @@ function AgentPrefsSection() {
 
 export default function SettingsPage() {
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 selection:bg-purple-100 selection:text-purple-900">
-            <div className="max-w-5xl mx-auto px-6 py-12 md:py-20">
+        <div className="min-h-screen bg-[#09090b] text-white selection:bg-purple-500/30">
+            <div className="max-w-6xl mx-auto px-6 py-12 md:py-24">
+                
                 {/* Navigation Header */}
-                <div className="mb-10 flex items-center justify-between">
+                <div className="mb-16 flex items-center justify-between">
                     <Link 
                         href="/chat"
-                        className="flex items-center gap-2 text-slate-500 hover:text-purple-600 font-bold text-sm transition-all group"
+                        className="flex items-center gap-3 text-slate-500 hover:text-white font-bold text-base transition-all group"
                     >
-                        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> Back to Chat
+                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Back to Chat
                     </Link>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold uppercase tracking-widest border border-emerald-100">
-                        <Shield size={12} /> Secure Tunnel Active
+                    <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-full text-[11px] font-bold uppercase tracking-widest border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Secure Session Active
                     </div>
                 </div>
 
                 {/* Page Header */}
-                <div className="mb-12">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold uppercase tracking-widest mb-4">
-                        <SettingsIcon size={14} /> Configuration
+                <div className="mb-16">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold uppercase tracking-widest mb-6">
+                        <SettingsIcon size={16} /> Configuration
                     </div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-3">System Settings</h1>
-                    <p className="text-base text-slate-500 max-w-2xl leading-relaxed">
+                    <h1 className="text-5xl md:text-6xl font-black text-white tracking-tighter mb-6 leading-tight">
+                        System <span className="text-gradient-purple">Settings</span>
+                    </h1>
+                    <p className="text-lg text-slate-400 max-w-3xl leading-relaxed">
                         Fine-tune your autonomous workforce. Manage API orchestration keys and override default agent brain models for specialized tasks.
                     </p>
                 </div>
 
-                <div className="space-y-8">
+                <div className="space-y-12">
                     <LLMKeysSection />
                     <AgentPrefsSection />
 
@@ -424,38 +430,40 @@ export default function SettingsPage() {
                     <Card>
                         <SectionHeader
                             icon={BookOpen}
-                            title="Prompting Best Practices"
-                            subtitle="Official documentation for high-performance agent orchestration from top providers."
+                            title="Orchestration Guides"
+                            subtitle="Official documentation for high-performance agent behavior across leading providers."
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
                             {[
-                                { provider: 'Amazon Bedrock', model: 'Nova Pro', url: 'https://docs.aws.amazon.com/nova/latest/userguide/prompt-engineering.html', note: 'All Default Agents' },
-                                { provider: 'OpenAI', model: 'GPT-4o', url: 'https://platform.openai.com/docs/guides/prompt-engineering', note: 'Fallback CEO, Finance agents' },
-                                { provider: 'Google', model: 'Gemini 2.5 Pro', url: 'https://ai.google.dev/gemini-api/docs/prompting-strategies', note: 'Fallback CTO, FE agents' },
-                                { provider: 'Anthropic', model: 'Claude 3.5', url: 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview', note: 'Fallback Engineer, QA agents' },
+                                { provider: 'AWS Bedrock', model: 'Nova Pro', url: 'https://docs.aws.amazon.com/nova/latest/userguide/prompt-engineering.html', icon: <Cpu />, color: 'purple' },
+                                { provider: 'OpenAI', model: 'GPT-4o', url: 'https://platform.openai.com/docs/guides/prompt-engineering', icon: <Cpu />, color: 'blue' },
+                                { provider: 'Google', model: 'Gemini 2.5', url: 'https://ai.google.dev/gemini-api/docs/prompting-strategies', icon: <Sparkles />, color: 'teal' },
+                                { provider: 'Anthropic', model: 'Claude 3.5', url: 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview', icon: <Shield />, color: 'pink' },
                             ].map(g => (
                                 <a
                                     key={g.provider}
                                     href={g.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="block p-5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-purple-200 hover:bg-white hover:shadow-lg hover:shadow-purple-500/5 transition-all group"
+                                    className="block p-6 bg-white/5 border border-white/5 rounded-[1.5rem] hover:border-purple-500/50 hover:bg-white/10 transition-all group relative overflow-hidden"
                                 >
-                                    <p className="text-sm font-bold text-slate-800 group-hover:text-purple-600">{g.provider}</p>
-                                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wide">{g.model}</p>
-                                    <p className="text-xs text-slate-500 mt-4 leading-relaxed">{g.note}</p>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-purple-500 transition-colors uppercase tracking-widest">Read Docs</span>
-                                        <ArrowLeft size={12} className="rotate-180 text-slate-300 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="p-2 rounded-xl bg-white/5 text-white bg-opacity-10 group-hover:scale-110 transition-transform">
+                                            {g.icon}
+                                        </div>
+                                        <ArrowLeft size={16} className="rotate-180 text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
                                     </div>
+                                    <p className="text-base font-bold text-white mb-1">{g.provider}</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{g.model}</p>
+                                    <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </a>
                             ))}
                         </div>
                     </Card>
                     
-                    <div className="text-center py-8">
-                        <p className="text-xs text-slate-400 font-medium tracking-wide italic">
-                            Platform keys are managed by Proximus-Nova admin. Personal keys take precedence.
+                    <div className="text-center py-12 border-t border-white/5">
+                        <p className="text-xs text-slate-600 font-bold uppercase tracking-[0.2em] italic">
+                            Platform keys are managed by Proximus-Nova admin • Personal overrides take precedence
                         </p>
                     </div>
                 </div>
