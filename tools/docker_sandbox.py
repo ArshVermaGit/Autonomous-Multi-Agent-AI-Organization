@@ -8,6 +8,7 @@ import os
 import uuid
 import structlog
 
+from typing import Any, cast
 from .base_tool import BaseTool, ToolResult
 
 logger = structlog.get_logger(__name__)
@@ -40,9 +41,9 @@ class DockerSandboxTool(BaseTool):
         """
         Spins up an ephemeral container mapped to the project workspace.
         """
-        container_name = f"ai-org-sandbox-{uuid.uuid4().hex[:8]}"
+        container_name = f"ai-org-sandbox-{cast(str, uuid.uuid4().hex)[:8]}"
         logger.info(
-            "Spawning execution sandbox", container=container_name[:12], image=image
+            "Spawning execution sandbox", container=cast(str, container_name)[:12], image=image
         )
 
         # Build the docker run command to ensure isolation
@@ -77,11 +78,11 @@ class DockerSandboxTool(BaseTool):
         result = await self._run_subprocess(docker_cmd)
 
         if result.success:
-            logger.info("Sandbox execution succeeded", container=container_name[:12])
+            logger.info("Sandbox execution succeeded", container=cast(str, container_name)[:12])
         else:
             logger.warning(
                 "Sandbox execution failed",
-                container=container_name[:12],
+                container=cast(str, container_name)[:12],
                 error=result.error,
             )
 
