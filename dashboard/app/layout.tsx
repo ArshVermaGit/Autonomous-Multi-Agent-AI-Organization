@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import SessionWrapper from '@/components/SessionWrapper'
@@ -15,13 +15,17 @@ const jetbrainsMono = JetBrains_Mono({
     display: 'swap',
 })
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#0a0a0f',
+}
+
 export const metadata: Metadata = {
     title: 'AI Organization — Control Center',
     description: 'Autonomous Multi-Agent AI Organization — Real-time project orchestration dashboard',
     keywords: ['AI', 'agents', 'orchestration', 'automation', 'LLM'],
     authors: [{ name: 'AI Organization' }],
-    themeColor: '#0a0a0f',
-    viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
