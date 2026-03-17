@@ -459,7 +459,7 @@ class OrchestratorEngine:
                 else:
                     task.mark_failed(str(e))
                     error_msg: str = cast(str, str(e))
-                     await self._emit(
+                    await self._emit(
                         ExecutionEvent(
                             "task_failed",
                             task.agent_role,
