@@ -5,6 +5,13 @@
   ],
   "search_path": [
     ".venv/lib/python3.12/site-packages",
+    "agents",
+    "orchestrator",
+    "api",
+    "tools",
+    "utils",
+    "moe",
+    "messaging",
     "."
   ],
   "exclude": [
