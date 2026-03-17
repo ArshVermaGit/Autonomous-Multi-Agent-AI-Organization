@@ -184,13 +184,9 @@ class OrchestratorEngine:
             # ── Phase 1: CEO Strategy ──────────────────────────────
             ctx["status"] = "strategy"
             await self._emit(
-<<<<<<< Updated upstream
                 ExecutionEvent(
                     "phase_change", AgentRole.CEO, "CEO analyzing business idea..."
                 )
-=======
-                ExecutionEvent("phase_change", "CEO", "CEO analyzing business idea...")
->>>>>>> Stashed changes
             )
             ceo_agent = self._agent_registry.get(AgentRole.CEO)
             if ceo_agent:
@@ -203,7 +199,6 @@ class OrchestratorEngine:
                     artifacts,
                     self._emit,
                 )
-<<<<<<< Updated upstream
                 try:
                     business_plan = await ceo_agent.run(
                         business_idea=memory.project_config["business_idea"],
@@ -217,21 +212,6 @@ class OrchestratorEngine:
                         memory.project_config["business_idea"]
                     )
                     memory.business_plan = business_plan
-=======
-                business_plan = await ceo_agent.run(
-                    business_idea=memory.project_config["business_idea"],
-                    context=exec_ctx,
-                )
-                memory.business_plan = business_plan
-                # Professional fallback in case LLM is unavailable
-                logger.warning(
-                    "LLM Strategy generation failed, using safety fallback model"
-                )
-                business_plan = self._generate_fallback_business_plan(
-                    memory.project_config["business_idea"]
-                )
-                memory.business_plan = business_plan
->>>>>>> Stashed changes
 
             await self._emit(
                 ExecutionEvent(
@@ -490,10 +470,7 @@ class OrchestratorEngine:
         """Post-deployment autonomous evaluation using cost and decision metrics."""
         ctx = self._active_projects[project_id]
         cost_ledger = ctx["cost_ledger"]
-<<<<<<< Updated upstream
         task_graph = ctx.get("task_graph")
-=======
->>>>>>> Stashed changes
 
         await self._emit(
             ExecutionEvent(
@@ -503,7 +480,6 @@ class OrchestratorEngine:
             )
         )
 
-<<<<<<< Updated upstream
         # Invoke agent.self_critique on all completed task outputs
         critiques_collected = 0
         reflections = []
@@ -547,20 +523,13 @@ class OrchestratorEngine:
         # Analyze macro results
         total_cost = cost_ledger.total_spent()
         task_count = len(task_graph.tasks) if task_graph else 0
-        
+
         avg_score = sum(r["score"] for r in reflections) / len(reflections) if reflections else 0.0
         approvals = sum(1 for r in reflections if r["approved"])
 
         critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
         critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. Approvals: {approvals}/{critiques_collected}. "
-        
-=======
-        # Analyze results
-        total_cost = cost_ledger.get_total_cost()
-        task_count = len(ctx["task_graph"].tasks) if ctx["task_graph"] else 0
 
-        critique_msg = f"Evaluation complete: {task_count} tasks analyzed. "
->>>>>>> Stashed changes
         if total_cost > self.budget_usd:
             critique_msg += f"Budget exceeded (${total_cost:.2f} / ${self.budget_usd:.2f}) — optimization recommended."
             level = "warning"
@@ -576,15 +545,11 @@ class OrchestratorEngine:
                 data={
                     "total_cost": total_cost,
                     "budget": self.budget_usd,
-<<<<<<< Updated upstream
                     "reflections_gathered": critiques_collected,
                     "average_quality_score": round(avg_score, 2),
                     "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
                     "reflections": reflections,
                     "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
-=======
-                    "task_efficiency": "High",
->>>>>>> Stashed changes
                 },
                 level=level,
             )
