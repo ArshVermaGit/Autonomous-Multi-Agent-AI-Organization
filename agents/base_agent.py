@@ -10,7 +10,12 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from datetime import UTC, datetime
+<<<<<<< Updated upstream
 from typing import Any
+=======
+import json
+from typing import Any, cast, Optional, Dict
+>>>>>>> Stashed changes
 
 import structlog
 from google.genai import types
@@ -23,14 +28,14 @@ logger = structlog.get_logger(__name__)
 
 def _clean_json_response(text: str) -> str:
     """Strip Markdown formatting (e.g. ```json ... ```) from LLM output."""
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+    text = cast(str, text).strip()
+    if cast(str, text).startswith("```json"):
+        text = cast(str, text)[7:]
+    elif cast(str, text).startswith("```"):
+        text = cast(str, text)[3:]
+    if cast(str, text).endswith("```"):
+        text = cast(str, text)[:-3]
+    return cast(str, text).strip()
 
 
 class AgentToolCall:

@@ -17,8 +17,7 @@ import os
 import signal
 import time
 import traceback
-from typing import Any, Dict, Optional
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -155,9 +154,9 @@ class AgentMicroservice:
         ) or KafkaTopics.task_topic_for_role(self.role)
         self.group_id = os.getenv("KAFKA_CONSUMER_GROUP", f"{self.role.lower()}-group")
         self.running = True
-        self.agent: Optional[Any] = None
-        self.consumer: Optional["KafkaConsumerClient"] = None
-        self.producer: Optional["KafkaProducerClient"] = None
+        self.agent: Any | None = None
+        self.consumer: KafkaConsumerClient | None = None
+        self.producer: KafkaProducerClient | None = None
         self._tasks_done = 0
         self._tasks_failed = 0
 
@@ -259,7 +258,9 @@ class AgentMicroservice:
                     "Failed to parse TaskMessage",
                     error=str(e),
                     raw_preview=(
-                        raw_preview[:500] if len(raw_preview) > 500 else raw_preview
+                        cast(str, str(raw_msg))[:500]
+                        if len(cast(str, str(raw_msg))) > 500
+                        else cast(str, str(raw_msg))
                     ),
                 )
                 await self._emit_error_event(
@@ -280,7 +281,9 @@ class AgentMicroservice:
                         "raw_message": raw_msg,
                     }
                     try:
-                        await self.producer.publish_json("ai-org.dlq", dlq_payload, key="parse-error")
+                        producer = self.producer
+                        assert producer is not None
+                        await producer.publish_json("ai-org.dlq", dlq_payload, key="parse-error")
                     except Exception as pub_err:
                         logger.error("Failed to publish to DLQ", error=str(pub_err))
                 continue
@@ -370,7 +373,6 @@ class AgentMicroservice:
             agent = self.agent
             if not agent:
                 raise RuntimeError("Agent not initialized")
-            output = await agent.execute_task(
             output = await agent_instance.execute_task(
                 task=_TaskProxy(),
                 context=_build_minimal_context(task_msg),
@@ -435,7 +437,7 @@ class AgentMicroservice:
                 "Task failed",
                 task_id=task_msg.task_id,
                 error=err_str,
-                trace=traceback.format_exc()[-500:],  # type: ignore[index]
+                trace=cast(str, traceback.format_exc())[-500:],
                 role=self.role,
             )
 
@@ -460,7 +462,11 @@ class AgentMicroservice:
             await self._emit_event(
                 project_id=task_msg.project_id,
                 event_type="task_failed",
+<<<<<<< Updated upstream
                 message=f"[{self.role}] Failed: {task_msg.task_name} - {err_str[:100]}",  # type: ignore[index]
+=======
+                message=f"[{self.role}] Failed: {task_msg.task_name} — {cast(str, err_str)[:100]}",
+>>>>>>> Stashed changes
                 data={"task_id": task_msg.task_id, "error": err_str},
                 level="error",
                 trace_id=task_msg.trace_id,

@@ -4,10 +4,12 @@ Provides a unified tracer that propagates context across all agents,
 Kafka messages, and HTTP calls. Compatible with Jaeger and AWS X-Ray.
 """
 
-import os
-import functools
+from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
-from typing import Any, Callable, Dict, Optional
+import functools
+import os
+from typing import Any, Dict
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -15,12 +17,12 @@ logger = structlog.get_logger(__name__)
 # Try OpenTelemetry - graceful degradation if not installed
 try:
     from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.propagate import extract, inject
+    from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.propagate import inject, extract
-    from opentelemetry.trace import Status, StatusCode, SpanKind
+    from opentelemetry.trace import SpanKind, Status, StatusCode
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -83,7 +85,7 @@ _tracer = None
 
 def init_tracer(
     service_name: str = "ai-org",
-    otlp_endpoint: Optional[str] = None,
+    otlp_endpoint: str | None = None,
 ) -> Any:
     """
     Initialize the OpenTelemetry tracer.
@@ -162,7 +164,7 @@ def extract_trace_context(headers: Dict[str, str]):
 @contextmanager
 def create_span(
     name: str,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: Dict[str, Any] | None = None,
     parent_context=None,
     kind: str = "internal",  # "internal" | "server" | "client" | "producer" | "consumer"
 ):
@@ -214,7 +216,7 @@ def create_span(
 @asynccontextmanager
 async def async_span(
     name: str,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: Dict[str, Any] | None = None,
     parent_context=None,
 ):
     """Async version of create_span."""
@@ -222,8 +224,13 @@ async def async_span(
         yield span
 
 
+<<<<<<< Updated upstream
 # -- Decorator ------------------------------------------------------------─
 def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
+=======
+# ── Decorator ─────────────────────────────────────────────────────────────
+def traced(span_name: str | None = None, attributes: Dict | None = None):
+>>>>>>> Stashed changes
     """
     Decorator to automatically trace a function.
 
@@ -255,7 +262,7 @@ def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
     return decorator
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     """Get the current trace ID as a hex string (for logging correlation)."""
     if not OTEL_AVAILABLE:
         return None

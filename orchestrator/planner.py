@@ -185,7 +185,9 @@ class OrchestratorEngine:
         )
 
         # Run in background
-        _bg_task = asyncio.create_task(self._run_project_lifecycle(project_id))  # noqa: RUF006
+        _bg_task = asyncio.create_task(
+            self._run_project_lifecycle(project_id)
+        )
         return project_id
 
     # -- Main Lifecycle --------------------------------------------─
@@ -222,8 +224,17 @@ class OrchestratorEngine:
                     )
                     memory.business_plan = business_plan
                 except Exception as e:
+<<<<<<< Updated upstream
                     logger.warning("LLM Strategy generation failed, using safety fallback model", error=str(e))
                     memory.business_plan = self._generate_fallback_business_plan(
+=======
+                    # Professional fallback in case LLM is unavailable
+                    logger.warning(
+                        "LLM Strategy generation failed, using safety fallback model",
+                        error=str(e),
+                    )
+                    business_plan = self._generate_fallback_business_plan(
+>>>>>>> Stashed changes
                         memory.project_config["business_idea"]
                     )
                     memory.business_plan = business_plan
@@ -242,7 +253,9 @@ class OrchestratorEngine:
             ctx["status"] = "architecture"
             await self._emit(
                 ExecutionEvent(
-                    "phase_change", AgentRole.CTO, "CTO designing system architecture..."
+                    "phase_change",
+                    AgentRole.CTO,
+                    "CTO designing system architecture...",
                 )
             )
             cto_agent = self._agent_registry.get(AgentRole.CTO)
@@ -518,13 +531,28 @@ class OrchestratorEngine:
                     if agent and hasattr(agent, "self_critique"):
                         try:
                             # Safely attempt self_critique reflection
-                            critique_result = await agent.self_critique(task.output_data)
+                            critique_result = await agent.self_critique(
+                                task.output_data
+                            )
 
                             reflection_summary = {
                                 "task": task.name,
                                 "agent": task.agent_role,
-                                "approved": critique_result.get("_critique", {}).get("approved", True),
-                                "score": sum(critique_result.get("_critique", {}).get("scores", {}).values()) / 4 if critique_result.get("_critique", {}).get("scores") else 7.0
+                                "approved": critique_result.get("_critique", {}).get(
+                                    "approved", True
+                                ),
+                                "score": (
+                                    sum(
+                                        critique_result.get("_critique", {})
+                                        .get("scores", {})
+                                        .values()
+                                    )
+                                    / 4
+                                    if critique_result.get("_critique", {}).get(
+                                        "scores"
+                                    )
+                                    else 7.0
+                                ),
                             }
                             reflections.append(reflection_summary)
 
@@ -534,7 +562,11 @@ class OrchestratorEngine:
                                 decision_type="reflection",
                                 description=f"Self-critique on task: {task.name}",
                                 rationale="Continuous improvement loop",
-                                input_context={"task_output": cast(str, str(task.output_data))[:500]},
+                                input_context={
+                                    "task_output": cast(str, str(task.output_data))[
+                                        :500
+                                    ]
+                                },
                                 output=critique_result,
                                 confidence=0.85,
                                 tags=["reflection", "critique"],
@@ -545,14 +577,18 @@ class OrchestratorEngine:
                                 "Agent failed self-critique",
                                 role=task.agent_role,
                                 task_id=task.id,
-                                error=str(e)
+                                error=str(e),
                             )
 
         # Analyze macro results
         total_cost = cost_ledger.total_spent()
         task_count = len(task_graph.tasks) if task_graph else 0
 
-        avg_score = sum(r["score"] for r in reflections) / len(reflections) if reflections else 0.0
+        avg_score = (
+            sum(r["score"] for r in reflections) / len(reflections)
+            if reflections
+            else 0.0
+        )
         approvals = sum(1 for r in reflections if r["approved"])
 
         critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
@@ -576,8 +612,13 @@ class OrchestratorEngine:
                     "budget": float(self.budget_usd),
                     "reflections_gathered": int(critiques_collected),
                     "average_quality_score": float(f"{avg_score:.2f}"),
-                    "approval_rate": float(f"{approvals / max(critiques_collected, 1):.2f}") if critiques_collected else 0.0,
+                    "approval_rate": (
+                        float(f"{approvals / max(critiques_collected, 1):.2f}")
+                        if critiques_collected
+                        else 0.0
+                    ),
                     "reflections": reflections,
+<<<<<<< Updated upstream
                     "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
                     "total_cost": total_cost,
                     "budget": self.budget_usd,
@@ -586,6 +627,11 @@ class OrchestratorEngine:
                     "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
                     "reflections": reflections,
                     "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate",
+=======
+                    "task_efficiency": (
+                        "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
+                    ),
+>>>>>>> Stashed changes
                 },
                 level=level,
             )
@@ -614,7 +660,11 @@ class OrchestratorEngine:
         short_kw: str = cast(str, keywords)
         return {
             "vision": f"A scalable platform for: {idea}",
-            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {short_kw[0:30]}..."],
+            "mvp_features": [
+                "Core Authentication",
+                "Basic Storage",
+                f"API Endpoints for {short_kw[0:30]}...",
+            ],
             "milestones": ["Infra Bootstrap", "MVP Implementation", "QA Audit"],
             "risk_assessment": ["Vendor lock-in", "Latency threshold", "Data privacy"],
             "target_users": f"Users interested in {short_kw[0:40]}...",
