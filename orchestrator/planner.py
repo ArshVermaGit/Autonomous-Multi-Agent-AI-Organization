@@ -7,7 +7,7 @@ event broadcasting, and the self-critique feedback loop.
 import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 import uuid
 
 import structlog
@@ -128,7 +128,7 @@ class OrchestratorEngine:
         """
         project_id = str(uuid.uuid4())
         logger.info(
-            "Starting new project", project_id=project_id, idea=business_idea[:80]
+            "Starting new project", project_id=project_id, idea=cast(str, business_idea)[:80]
         )
 
         # Initialize shared memory systems
@@ -161,7 +161,7 @@ class OrchestratorEngine:
             ExecutionEvent(
                 event_type="system",
                 agent_role=AgentRole.ORCHESTRATOR,
-                message=f"Project started: {business_idea[:60]}",
+                message=f"Project started: {cast(str, business_idea)[:60]}",
                 data={"project_id": project_id},
                 level="success",
             )
@@ -460,7 +460,7 @@ class OrchestratorEngine:
                         ExecutionEvent(
                             "task_failed",
                             task.agent_role,
-                            f"[{task.agent_role}] Failed: {task.name} — {str(e)[:100]}",
+                            f"[{task.agent_role}] Failed: {task.name} — {cast(str, str(e))[:100]}",
                             level="error",
                         )
                     )
@@ -506,7 +506,7 @@ class OrchestratorEngine:
                                 decision_type="reflection",
                                 description=f"Self-critique on task: {task.name}",
                                 rationale="Continuous improvement loop",
-                                input_context={"task_output": str(task.output_data)[:500]},
+                                input_context={"task_output": cast(str, str(task.output_data))[:500]},
                                 output=critique_result,
                                 confidence=0.85,
                                 tags=["reflection", "critique"],
@@ -543,11 +543,11 @@ class OrchestratorEngine:
                 AgentRole.ORCHESTRATOR,
                 critique_msg,
                 data={
-                    "total_cost": total_cost,
-                    "budget": self.budget_usd,
-                    "reflections_gathered": critiques_collected,
-                    "average_quality_score": round(avg_score, 2),
-                    "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
+                    "total_cost": float(total_cost),
+                    "budget": float(self.budget_usd),
+                    "reflections_gathered": int(critiques_collected),
+                    "average_quality_score": float(f"{avg_score:.2f}"),
+                    "approval_rate": float(f"{approvals / max(critiques_collected, 1):.2f}") if critiques_collected else 0.0,
                     "reflections": reflections,
                     "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
                 },
@@ -578,10 +578,10 @@ class OrchestratorEngine:
         keywords = " ".join([word for word in idea.split() if len(word) > 3])
         return {
             "vision": f"A scalable platform for: {idea}",
-            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {keywords[:30]}..."],
+            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {cast(str, keywords)[:30]}..."],
             "milestones": ["Infra Bootstrap", "MVP Implementation", "QA Audit"],
             "risk_assessment": ["Vendor lock-in", "Latency threshold", "Data privacy"],
-            "target_users": f"Users interested in {keywords[:40]}...",
+            "target_users": f"Users interested in {cast(str, keywords)[:40]}...",
             "revenue_model": "Usage-based or Freemium",
             "success_metrics": ["99.9% availability", "< 500ms p95"],
         }
