@@ -1,8 +1,11 @@
-import pytest
 import asyncio
 from unittest.mock import MagicMock
-from orchestrator.planner import OrchestratorEngine
+
+import pytest
+
 from agents.roles import AgentRole
+from orchestrator.planner import OrchestratorEngine
+
 
 class MockAgent:
     def __init__(self, role):

@@ -5,7 +5,7 @@ autonomously using natural language `nova.act()` prompts.
 """
 
 import asyncio
-from typing import Optional
+
 import structlog
 
 from .base_tool import BaseTool, ToolResult
@@ -24,8 +24,8 @@ class BrowserTool(BaseTool):
     async def run(
         self,
         action: str,
-        url: Optional[str] = None,
-        prompt: Optional[str] = None,
+        url: str | None = None,
+        prompt: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """
@@ -69,17 +69,17 @@ class BrowserTool(BaseTool):
             return self._mock_act(prompt, url)
         except Exception as e:
             return ToolResult(
-                success=False, output="", error=f"Nova Act failed: {str(e)}"
+                success=False, output="", error=f"Nova Act failed: {e!s}"
             )
 
-    def _mock_act(self, prompt: str, url: Optional[str]) -> ToolResult:
+    def _mock_act(self, prompt: str, url: str | None) -> ToolResult:
         """Fallback mock for UI testing when the Nova Act SDK is unavailable locally."""
         output_text = ""
 
         if url:
             try:
-                import requests
                 from bs4 import BeautifulSoup
+                import requests
 
                 resp = requests.get(url, timeout=30)
                 resp.raise_for_status()
@@ -95,7 +95,7 @@ class BrowserTool(BaseTool):
                 output_text = "\\n".join(chunk for chunk in chunks if chunk)[:5000]
                 output_text = f"\\nExtracted Web Content from {url}:\\n{output_text}\\n"
             except Exception as e:
-                output_text = f"\\n(Failed to fetch URL locally: {str(e)})\\n"
+                output_text = f"\\n(Failed to fetch URL locally: {e!s})\\n"
 
         simulated_output = (
             f"[Amazon Nova Act - Mock Execution]\\n"

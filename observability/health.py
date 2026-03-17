@@ -4,10 +4,11 @@ Standardized health check responses for Kubernetes liveness/readiness probes
 and external monitoring systems.
 """
 
+from datetime import datetime
 import os
 import time
-from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -25,7 +26,7 @@ class ComponentHealth:
     """Health check result for a single dependency."""
 
     def __init__(
-        self, name: str, status: str, latency_ms: float = 0, details: Dict = None
+        self, name: str, status: str, latency_ms: float = 0, details: Dict | None = None
     ):
         self.name = name
         self.status = status
@@ -85,7 +86,7 @@ async def check_postgres(db_session=None) -> ComponentHealth:
         )
 
 
-async def check_kafka(bootstrap_servers: Optional[str] = None) -> ComponentHealth:
+async def check_kafka(bootstrap_servers: str | None = None) -> ComponentHealth:
     """Check Kafka connectivity."""
     servers = bootstrap_servers or os.getenv(
         "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
@@ -123,8 +124,8 @@ async def check_kafka(bootstrap_servers: Optional[str] = None) -> ComponentHealt
 def build_health_response(
     service_name: str,
     version: str = "2.0.0",
-    component_checks: Dict[str, ComponentHealth] = None,
-    extra_info: Dict[str, Any] = None,
+    component_checks: Dict[str, ComponentHealth] | None = None,
+    extra_info: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """
     Build a standardized health response.

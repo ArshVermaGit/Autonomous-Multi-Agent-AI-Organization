@@ -4,8 +4,9 @@ Structured JSON logging via structlog for CloudWatch compatibility.
 """
 
 import logging
-import structlog
 import sys
+
+import structlog
 
 
 def configure_logging(level: str = "INFO", json_output: bool = False):
@@ -22,13 +23,10 @@ def configure_logging(level: str = "INFO", json_output: bool = False):
 
     if json_output:
         # Production: JSON for CloudWatch
-        processors = shared_processors + [
-            structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer(),
-        ]
+        processors = [*shared_processors, structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
     else:
         # Development: colored console
-        processors = shared_processors + [structlog.dev.ConsoleRenderer(colors=True)]
+        processors = [*shared_processors, structlog.dev.ConsoleRenderer(colors=True)]
 
     structlog.configure(
         processors=processors,

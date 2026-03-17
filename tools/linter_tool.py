@@ -4,7 +4,9 @@ Runs static analysis, auto-formatting, and returns structured reports.
 """
 
 import json
+
 import structlog
+
 from .base_tool import BaseTool, ToolResult
 
 logger = structlog.get_logger(__name__)

@@ -1,12 +1,14 @@
-import json
-import httpx
-import websockets
 import asyncio
-from datetime import datetime
 from collections.abc import Generator
+from datetime import UTC, datetime
+import json
+from typing import ClassVar
+
+import httpx
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Input, RichLog
 from textual.binding import Binding
+from textual.widgets import Footer, Header, Input, RichLog
+import websockets
 
 
 class ProximusNovaTUI(App):
@@ -17,14 +19,14 @@ class ProximusNovaTUI(App):
         background: #09090b;
         color: #f1f5f9;
     }
-    
+
     #log {
         height: 1fr;
         border: solid #27272a;
         background: #09090b;
         padding: 1;
     }
-    
+
     #cmd_input {
         dock: bottom;
         margin: 1 0;
@@ -32,14 +34,14 @@ class ProximusNovaTUI(App):
         background: #09090b;
         color: #f1f5f9;
     }
-    
+
     Header {
         background: #050505;
         color: #34d399;
     }
     """
 
-    BINDINGS = [
+    BINDINGS: ClassVar[list[Binding]] = [
         Binding("ctrl+c", "quit", "Quit", show=True),
         Binding("ctrl+l", "clear_log", "Clear Log", show=True),
     ]
@@ -127,7 +129,7 @@ class ProximusNovaTUI(App):
                     }
                     color = colors.get(agent, "dim")
 
-                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    timestamp = datetime.now(UTC).strftime("%H:%M:%S")
 
                     if event_type == "thinking":
                         log.write(
@@ -149,7 +151,7 @@ class ProximusNovaTUI(App):
                         )
 
         except Exception as e:
-            log.write(f"[bold red]Connection lost: {str(e)}[/]")
+            log.write(f"[bold red]Connection lost: {e!s}[/]")
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         idea = event.value.strip()
@@ -185,7 +187,7 @@ class ProximusNovaTUI(App):
                 self.run_worker(self.stream_events(project_id))
 
         except Exception as e:
-            log.write(f"[bold red]Failed to launch project: {str(e)}[/]")
+            log.write(f"[bold red]Failed to launch project: {e!s}[/]")
 
 
 if __name__ == "__main__":

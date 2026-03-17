@@ -6,7 +6,8 @@ for all registered agent experts.
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -157,7 +158,7 @@ class ExpertStats:
         self.total_cost_usd: float = 0.0
         self.total_tokens: int = 0
         self.latencies_ms: List[float] = []  # rolling window (last 100)
-        self.last_active: Optional[datetime] = None
+        self.last_active: datetime | None = None
         self._lock = asyncio.Lock()
 
     async def record_start(self):
@@ -269,10 +270,10 @@ class ExpertRegistry:
             role=role, max_concurrent=config["max_concurrent"]
         )
 
-    def get_expert(self, role: str) -> Optional[Dict[str, Any]]:
+    def get_expert(self, role: str) -> Dict[str, Any] | None:
         return self._experts.get(role)
 
-    def get_stats(self, role: str) -> Optional[ExpertStats]:
+    def get_stats(self, role: str) -> ExpertStats | None:
         return self._stats.get(role)
 
     def all_experts(self) -> Dict[str, Dict[str, Any]]:
@@ -295,7 +296,7 @@ class ExpertRegistry:
         if role in self._stats:
             await self._stats[role].record_failure(latency_ms)
 
-    def get_direct_expert_for_task_type(self, task_type: str) -> Optional[str]:
+    def get_direct_expert_for_task_type(self, task_type: str) -> str | None:
         """Return direct expert if task type maps unambiguously."""
         return TASK_TYPE_TO_EXPERT.get(task_type.lower())
 

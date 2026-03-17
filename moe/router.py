@@ -10,18 +10,20 @@ Implements dynamic agent routing with:
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 import structlog
 
+from messaging.schemas import MoERouteDecision
+
 from .expert_registry import ExpertRegistry
+from .http_client import get_rust_client
 from .scoring import (
-    task_type_to_vector,
+    ENSEMBLE_THRESHOLD,
     rank_experts,
     should_use_ensemble,
-    ENSEMBLE_THRESHOLD,
+    task_type_to_vector,
 )
-from messaging.schemas import MoERouteDecision
-from .http_client import get_rust_client
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +42,7 @@ class MoERouter:
     All decisions are logged and instrumented.
     """
 
-    def __init__(self, registry: Optional[ExpertRegistry] = None):
+    def __init__(self, registry: ExpertRegistry | None = None):
         self._registry = registry or ExpertRegistry()
         self._priority_queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
         self._routing_history: List[Dict[str, Any]] = []  # Last 1000 decisions
@@ -58,7 +60,7 @@ class MoERouter:
         task_id: str,
         project_id: str,
         input_context: str = "",
-        required_skills: List[str] = [],
+        required_skills: List[str] | None = None,
         priority: str = "medium",
         force_ensemble: bool = False,
         trace_id: str = "",
@@ -80,6 +82,8 @@ class MoERouter:
         Returns:
             MoERouteDecision with selected expert and explanation
         """
+        if required_skills is None:
+            required_skills = []
         start_time = time.monotonic()
 
         # -- Step -1: Early exit if no experts ----------------------------─
@@ -91,9 +95,7 @@ class MoERouter:
         rust_client = get_rust_client()
         if rust_client:
             # We must pass the dynamic expert map + stats to Rust so it matches python state
-            experts_map = {
-                role: info for role, info in self._registry.all_experts().items()
-            }
+            experts_map = dict(self._registry.all_experts().items())
             stats_map = {
                 role: s.to_dict() for role, s in self._registry.all_stats().items()
             }
@@ -186,7 +188,7 @@ class MoERouter:
             )
 
         top_role, top_score, top_breakdown = rankings[0]
-        second_role, second_score, second_breakdown = (
+        second_role, second_score, _second_breakdown = (
             rankings[1] if len(rankings) > 1 else (None, 0.0, {})
         )
 
@@ -235,9 +237,7 @@ class MoERouter:
     # -- Batch Routing ------------------------------------------------------
     async def route_batch(self, tasks: List[Dict[str, Any]]) -> List[MoERouteDecision]:
         """Route multiple tasks in parallel."""
-        experts_map = {
-            role: info for role, info in self._registry.all_experts().items()
-        }
+        experts_map = dict(self._registry.all_experts().items())
         if not experts_map:
             logger.error("No experts registered for batch routing.")
             return [

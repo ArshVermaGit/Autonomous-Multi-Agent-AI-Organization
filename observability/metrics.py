@@ -5,8 +5,8 @@ All Prometheus counters, histograms, and gauges are defined here.
 Import `metrics` and call .inc(), .observe(), .set() anywhere.
 """
 
-import time
 from contextlib import contextmanager
+import time
 
 import structlog
 
@@ -16,8 +16,8 @@ logger = structlog.get_logger(__name__)
 try:
     from prometheus_client import (
         Counter,
-        Histogram,
         Gauge,
+        Histogram,
         generate_latest,
         start_http_server,
     )

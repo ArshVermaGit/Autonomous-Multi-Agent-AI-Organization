@@ -4,12 +4,13 @@ Tests cosine similarity, expert ranking, and routing score computation.
 """
 
 import pytest
+
 from moe.scoring import (
-    cosine_similarity,
-    task_type_to_vector,
     compute_expert_score,
+    cosine_similarity,
     rank_experts,
     should_use_ensemble,
+    task_type_to_vector,
 )
 
 

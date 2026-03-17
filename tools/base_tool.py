@@ -3,11 +3,12 @@ Base Tool - Abstract base class for all execution tools.
 All tools are sandboxed, timed, audited, and observed.
 """
 
+from abc import ABC, abstractmethod
 import asyncio
 import os
 import time
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -20,11 +21,11 @@ class ToolResult:
         self,
         success: bool,
         output: str,
-        error: Optional[str] = None,
+        error: str | None = None,
         exit_code: int = 0,
         duration_ms: float = 0.0,
-        artifacts: List[str] = None,  # Paths to generated files
-        metadata: Dict[str, Any] = None,
+        artifacts: List[str] | None = None,  # Paths to generated files
+        metadata: Dict[str, Any] | None = None,
     ):
         self.success = success
         self.output = output
@@ -67,7 +68,7 @@ class BaseTool(ABC):
     DESCRIPTION: str = "Base tool"
     TIMEOUT_S: int = 120  # Default 2-minute timeout
 
-    def __init__(self, dry_run: bool = False, working_dir: Optional[str] = None):
+    def __init__(self, dry_run: bool = False, working_dir: str | None = None):
         self.dry_run = dry_run
         self.working_dir = working_dir or os.getcwd()
         logger.info("Tool initialized", tool=self.NAME, dry_run=dry_run)
@@ -97,7 +98,7 @@ class BaseTool(ABC):
                 duration_ms=round(duration, 2),
             )
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = (time.monotonic() - start) * 1000
             logger.error("Tool timed out", tool=self.NAME, timeout_s=self.TIMEOUT_S)
             return ToolResult(
@@ -121,9 +122,9 @@ class BaseTool(ABC):
     async def _run_subprocess(
         self,
         cmd: List[str],
-        cwd: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
-        timeout: Optional[int] = None,
+        cwd: str | None = None,
+        env: Dict[str, str] | None = None,
+        timeout: int | None = None,
     ) -> ToolResult:
         """
         Execute a subprocess command safely.
@@ -168,7 +169,7 @@ class BaseTool(ABC):
                 metadata={"command": cmd, "cwd": working_dir},
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration = (time.monotonic() - start) * 1000
             return ToolResult(
                 success=False,

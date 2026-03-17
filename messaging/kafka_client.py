@@ -10,16 +10,18 @@ Production-grade async Kafka clients with:
 """
 
 import asyncio
+from collections.abc import Callable
 import json
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
+
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 # Try importing kafka-python; fall back to a mock for local dev without Kafka
 try:
-    from kafka import KafkaProducer, KafkaConsumer
+    from kafka import KafkaConsumer, KafkaProducer
     from kafka.admin import KafkaAdminClient, NewTopic
     from kafka.errors import TopicAlreadyExistsError
 
@@ -50,7 +52,7 @@ class _InMemoryBus:
         queue = self._get_queue(topic)
         await queue.put({"key": key, "value": value})
         logger.debug("InMemoryBus: published", topic=topic, key=key)
-        
+
         # Issue #23: Persistence for mock bus to recover state across runs
         try:
             val_str = value.decode("utf-8") if isinstance(value, bytes) else str(value)
@@ -93,7 +95,7 @@ class KafkaProducerClient:
 
     def __init__(
         self,
-        bootstrap_servers: Optional[str] = None,
+        bootstrap_servers: str | None = None,
         client_id: str = "ai-org-producer",
     ):
         self.bootstrap_servers = bootstrap_servers or os.getenv(
@@ -142,8 +144,8 @@ class KafkaProducerClient:
         self,
         topic: str,
         value: bytes,
-        key: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+        key: str | None = None,
+        headers: Dict[str, str] | None = None,
     ) -> bool:
         """
         Publish a message to a Kafka topic.
@@ -173,8 +175,8 @@ class KafkaProducerClient:
         self,
         topic: str,
         data: Dict[str, Any],
-        key: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+        key: str | None = None,
+        headers: Dict[str, str] | None = None,
     ) -> bool:
         """Convenience method: serialize dict to JSON and publish."""
         payload = json.dumps(data, default=str).encode("utf-8")
@@ -184,8 +186,8 @@ class KafkaProducerClient:
         self,
         topic: str,
         model: Any,  # Any Pydantic BaseModel
-        key: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
+        key: str | None = None,
+        headers: Dict[str, str] | None = None,
     ) -> bool:
         """Serialize a Pydantic model and publish to Kafka."""
         payload = model.model_dump_json().encode("utf-8")
@@ -206,7 +208,7 @@ class KafkaConsumerClient:
         self,
         topics: List[str],
         group_id: str,
-        bootstrap_servers: Optional[str] = None,
+        bootstrap_servers: str | None = None,
         auto_offset_reset: str = "earliest",
     ):
         self.topics = topics
@@ -249,7 +251,7 @@ class KafkaConsumerClient:
             logger.warning("Kafka consumer failed, falling back to mock", error=str(e))
             self._use_mock = True
 
-    async def consume_one(self, timeout_ms: int = 5000) -> Optional[Dict[str, Any]]:
+    async def consume_one(self, timeout_ms: int = 5000) -> Dict[str, Any] | None:
         """
         Poll for a single message (non-blocking).
         Returns None if no message available within timeout.
@@ -267,7 +269,7 @@ class KafkaConsumerClient:
             records = await asyncio.to_thread(
                 self._consumer.poll, timeout_ms=timeout_ms, max_records=1
             )
-            for tp, messages in records.items():
+            for messages in records.values():
                 if messages:
                     msg = messages[0]
                     return {
@@ -287,7 +289,7 @@ class KafkaConsumerClient:
     async def consume_loop(
         self,
         handler: Callable,
-        dlq_topic: Optional[str] = None,
+        dlq_topic: str | None = None,
         max_retries: int = 3,
     ):
         """
@@ -390,7 +392,7 @@ class KafkaAdminManager:
     Called once on system startup to ensure all topics exist.
     """
 
-    def __init__(self, bootstrap_servers: Optional[str] = None):
+    def __init__(self, bootstrap_servers: str | None = None):
         self.bootstrap_servers = bootstrap_servers or os.getenv(
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
@@ -408,7 +410,7 @@ class KafkaAdminManager:
             logger.info(
                 "Mock mode: skipping topic creation", topics=list(topic_configs.keys())
             )
-            return {t: True for t in topic_configs}
+            return dict.fromkeys(topic_configs, True)
 
         try:
             admin = KafkaAdminClient(bootstrap_servers=self.bootstrap_servers)
@@ -424,10 +426,10 @@ class KafkaAdminManager:
             results = {}
             try:
                 admin.create_topics(topics_to_create, validate_only=False)
-                results = {t: True for t in topic_configs}
+                results = dict.fromkeys(topic_configs, True)
                 logger.info("Kafka topics created", count=len(topics_to_create))
             except TopicAlreadyExistsError:
-                results = {t: False for t in topic_configs}
+                results = dict.fromkeys(topic_configs, False)
                 logger.info("Kafka topics already exist")
             finally:
                 admin.close()

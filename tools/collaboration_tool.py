@@ -3,12 +3,12 @@ Agent Collaboration Tool - Enables agents to communicate securely with each othe
 by leaving persistent messages, code snippets, or architectural notes in a shared space.
 """
 
-import os
 import json
+import os
 import time
-from typing import Optional
-import structlog
+
 from filelock import FileLock, Timeout
+import structlog
 
 from .base_tool import BaseTool, ToolResult
 
@@ -37,8 +37,8 @@ class CollaborationTool(BaseTool):
         self,
         action: str,
         agent_name: str,
-        target_agent: Optional[str] = None,
-        message: Optional[str] = None,
+        target_agent: str | None = None,
+        message: str | None = None,
         **kwargs,
     ) -> ToolResult:
         """
@@ -68,7 +68,7 @@ class CollaborationTool(BaseTool):
         )
 
     async def _post_message(
-        self, agent_name: str, target_agent: Optional[str], message: str, **kwargs
+        self, agent_name: str, target_agent: str | None, message: str, **kwargs
     ) -> ToolResult:
         if not message:
             return ToolResult(
@@ -76,7 +76,7 @@ class CollaborationTool(BaseTool):
             )
 
         try:
-            with open(self.BOARD_FILE, "r") as f:
+            with open(self.BOARD_FILE) as f:
                 board = json.load(f)
         except Exception:
             board = []
@@ -100,18 +100,18 @@ class CollaborationTool(BaseTool):
 
     async def _read_all(self, agent_name: str, **kwargs) -> ToolResult:
         try:
-            with open(self.BOARD_FILE, "r") as f:
+            with open(self.BOARD_FILE) as f:
                 board = json.load(f)
         except Exception:
             board = []
 
             with FileLock(self.LOCK_FILE, timeout=10):
                 try:
-                    with open(self.BOARD_FILE, "r") as f:
+                    with open(self.BOARD_FILE) as f:
                         board = json.load(f)
                 except Exception:
                     board = []
-                    
+
                 entry = {
                     "timestamp": time.time(),
                     "from_agent": agent_name,
@@ -119,10 +119,10 @@ class CollaborationTool(BaseTool):
                     "message": message
                 }
                 board.append(entry)
-                
+
                 with open(self.BOARD_FILE, "w") as f:
                     json.dump(board, f, indent=2)
-                    
+
             return ToolResult(
                 success=True,
                 output=f"Message posted successfully to {target_agent or 'ALL'}.",
@@ -136,14 +136,14 @@ class CollaborationTool(BaseTool):
         try:
             with FileLock(self.LOCK_FILE, timeout=5):
                 try:
-                    with open(self.BOARD_FILE, "r") as f:
+                    with open(self.BOARD_FILE) as f:
                         board = json.load(f)
                 except Exception:
                     board = []
         except Timeout:
             logger.error("Timeout acquiring collaboration board lock for reading", agent=agent_name)
             return ToolResult(success=False, output="", error="Timeout acquiring board lock")
-            
+
         if not board:
             return ToolResult(
                 success=True, output="The collaboration board is currently empty."

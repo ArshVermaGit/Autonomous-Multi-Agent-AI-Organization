@@ -3,10 +3,11 @@ Skills Registry Tool - The "ClawHub Integration" for loading external capabiliti
 Allows the AI to dynamically discover and download new execution skills to its sandbox.
 """
 
-from typing import Dict, Any
 import importlib
-import sys
 import os
+import sys
+from typing import Any, Dict
+
 import structlog
 
 from .base_tool import BaseTool, ToolResult

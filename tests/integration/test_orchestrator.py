@@ -1,8 +1,8 @@
-import os
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
 from api.main import app
+
 
 @pytest.fixture
 def api_key(monkeypatch):
@@ -21,7 +21,7 @@ def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
-    
+
 def test_start_project_unauthorized(client):
     """Test that unauthorized project dispatches are rejected (Security harding)."""
     response = client.post(

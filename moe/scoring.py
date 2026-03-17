@@ -9,6 +9,7 @@ Computes composite routing scores using:
 
 import math
 from typing import Dict, List, Tuple
+
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -33,7 +34,7 @@ def cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
         vec_a = vec_a[:min_len]
         vec_b = vec_b[:min_len]
 
-    dot_product = sum(a * b for a, b in zip(vec_a, vec_b))
+    dot_product = sum(a * b for a, b in zip(vec_a, vec_b, strict=False))
     mag_a = math.sqrt(sum(a**2 for a in vec_a))
     mag_b = math.sqrt(sum(b**2 for b in vec_b))
 

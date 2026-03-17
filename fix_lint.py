@@ -1,27 +1,25 @@
-import os
 import glob
-import re
 
 files = glob.glob('orchestrator/**/*.py', recursive=True) + glob.glob('agents/**/*.py', recursive=True) + glob.glob('api/**/*.py', recursive=True)
 for fpath in files:
-    with open(fpath, 'r') as f:
+    with open(fpath) as f:
         content = f.read()
-    
+
     new_content = content
     # typing
     new_content = new_content.replace("from typing import Any, Dict, List", "from typing import Any")
     new_content = new_content.replace("from typing import Dict, List, Any", "from typing import Any")
     new_content = new_content.replace("from typing import List, Dict, Any", "from typing import Any")
-    
+
     new_content = new_content.replace("Dict[", "dict[")
     new_content = new_content.replace("List[", "list[")
-    
+
     # datetime utcnow
     if "datetime.utcnow()" in new_content:
         if "from datetime import timezone" not in new_content:
             new_content = new_content.replace("from datetime import datetime", "from datetime import datetime, timezone")
         new_content = new_content.replace("datetime.utcnow()", "datetime.now(timezone.utc)")
-    
+
     # Optional typing defaults
     new_content = new_content.replace("data: dict[str, Any] = None", "data: dict[str, Any] | None = None")
     new_content = new_content.replace("properties: dict[str, Any] = {}", "properties: dict[str, Any] | None = None")

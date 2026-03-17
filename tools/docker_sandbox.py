@@ -5,10 +5,11 @@ No internet access by default unless explicitly allowed.
 """
 
 import os
+from typing import cast
 import uuid
+
 import structlog
 
-from typing import Any, cast
 from .base_tool import BaseTool, ToolResult
 
 logger = structlog.get_logger(__name__)
@@ -43,9 +44,7 @@ class DockerSandboxTool(BaseTool):
         """
         container_name = f"ai-org-sandbox-{cast(str, uuid.uuid4().hex)[:8]}"
         c_name: str = cast(str, container_name)
-        logger.info(
-            "Spawning execution sandbox", container=c_name[:12], image=image
-        )
+        logger.info("Spawning execution sandbox", container=c_name[:12], image=image)
 
         # Build the docker run command to ensure isolation
         docker_cmd = [
