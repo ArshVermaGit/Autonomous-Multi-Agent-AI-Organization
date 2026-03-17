@@ -5,21 +5,14 @@
   ],
   "search_path": [
     ".venv/lib/python3.12/site-packages",
-    "agents",
-    "orchestrator",
-    "api",
-    "tools",
-    "utils",
-    "moe",
-    "messaging",
     "."
   ],
   "exclude": [
-    ".venv",
-    "node_modules",
     "dashboard",
     "go-backend",
     "moe-scoring",
+    "**/node_modules",
+    "**/.venv",
     "**/__pycache__"
   ],
   "strict": false,
