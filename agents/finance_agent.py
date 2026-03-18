@@ -41,7 +41,11 @@ You produce clear, actionable financial reports with specific dollar amounts.
 """
 
     async def run(
-        self, task: Any | None = None, context: Any | None = None, budget_usd: float = 200.0, **kwargs
+        self,
+        task: Any | None = None,
+        context: Any | None = None,
+        budget_usd: float = 200.0,
+        **kwargs,
     ) -> dict[str, Any]:
         """Analyze costs and produce financial report."""
         logger.info("Finance Agent: Starting cost analysis")

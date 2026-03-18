@@ -76,7 +76,6 @@ class DockerSandboxTool(BaseTool):
         logger.debug("Executing isolated tool command", raw_cmd=" ".join(docker_cmd))
         result = await self._run_subprocess(docker_cmd)
 
-
         if result.success:
             logger.info("Sandbox execution succeeded", container=c_name[:12])
         else:

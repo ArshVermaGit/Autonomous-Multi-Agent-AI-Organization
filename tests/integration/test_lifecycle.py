@@ -20,7 +20,7 @@ class MockAgent:
             "status": "success",
             "result": f"Mock output from {self.ROLE}",
             "mvp_features": [],  # For CEO
-            "estimated_monthly_cost_usd": 50  # For CTO
+            "estimated_monthly_cost_usd": 50,  # For CTO
         }
 
     async def execute_task(self, task, context):
@@ -30,10 +30,16 @@ class MockAgent:
         return {
             **output,
             "_critique": {
-                "scores": {"completeness": 9, "correctness": 9, "safety": 10, "cost": 8},
-                "approved": True
-            }
+                "scores": {
+                    "completeness": 9,
+                    "correctness": 9,
+                    "safety": 10,
+                    "cost": 8,
+                },
+                "approved": True,
+            },
         }
+
 
 @pytest.mark.asyncio
 async def test_full_lifecycle_simulation():
@@ -48,7 +54,7 @@ async def test_full_lifecycle_simulation():
         AgentRole.ENGINEER_BACKEND,
         AgentRole.ENGINEER_FRONTEND,
         AgentRole.QA,
-        AgentRole.FINANCE
+        AgentRole.FINANCE,
     ]
 
     for role in roles_to_mock:
@@ -56,8 +62,10 @@ async def test_full_lifecycle_simulation():
 
     # Setup event capture
     events = []
+
     def capture_event(event):
         events.append(event)
+
     engine.subscribe_events(capture_event)
 
     # Start project
@@ -86,7 +94,11 @@ async def test_full_lifecycle_simulation():
     assert "architecture" in status["memory_snapshot"]
 
     # Verify self-critique happened and data aggregation works
-    critique_events = [e for e in events if e.agent_role == AgentRole.ORCHESTRATOR and "Evaluation complete" in e.message]
+    critique_events = [
+        e
+        for e in events
+        if e.agent_role == AgentRole.ORCHESTRATOR and "Evaluation complete" in e.message
+    ]
     assert len(critique_events) > 0
     assert "average_quality_score" in critique_events[0].data
     assert "reflections" in critique_events[0].data

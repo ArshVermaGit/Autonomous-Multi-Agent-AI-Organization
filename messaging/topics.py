@@ -2,7 +2,6 @@
 Kafka Topic Definitions - Single source of truth for all topic names.
 """
 
-
 import typing
 
 

@@ -23,7 +23,11 @@ def configure_logging(level: str = "INFO", json_output: bool = False):
 
     if json_output:
         # Production: JSON for CloudWatch
-        processors = [*shared_processors, structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
+        processors = [
+            *shared_processors,
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
+        ]
     else:
         # Development: colored console
         processors = [*shared_processors, structlog.dev.ConsoleRenderer(colors=True)]

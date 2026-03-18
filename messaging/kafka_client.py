@@ -15,15 +15,15 @@ import json
 import os
 from typing import Any
 
-import structlog
+import structlog  # pyre-ignore[21]
 
 logger = structlog.get_logger(__name__)
 
 # Try importing kafka-python; fall back to a mock for local dev without Kafka
 try:
-    from kafka import KafkaConsumer, KafkaProducer
-    from kafka.admin import KafkaAdminClient, NewTopic
-    from kafka.errors import TopicAlreadyExistsError
+    from kafka import KafkaConsumer, KafkaProducer  # pyre-ignore[21]
+    from kafka.admin import KafkaAdminClient, NewTopic  # pyre-ignore[21]
+    from kafka.errors import TopicAlreadyExistsError  # pyre-ignore[21]
 
     KAFKA_AVAILABLE = True
 except ImportError:
@@ -57,7 +57,9 @@ class _InMemoryBus:
         try:
             val_str = value.decode("utf-8") if isinstance(value, bytes) else str(value)
             with open(self._log_file, "a") as f:
-                f.write(json.dumps({"topic": topic, "key": key, "value": val_str}) + "\\n")
+                f.write(
+                    json.dumps({"topic": topic, "key": key, "value": val_str}) + "\\n"
+                )
         except Exception as e:
             logger.error("Failed to append to mock bus log", error=str(e))
 
@@ -102,7 +104,7 @@ class KafkaProducerClient:
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
         self.client_id = client_id
-        self._producer = None
+        self._producer: Any = None
         self._use_mock = (
             not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
         )
@@ -216,7 +218,7 @@ class KafkaConsumerClient:
         self.bootstrap_servers = bootstrap_servers or os.getenv(
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
-        self._consumer = None
+        self._consumer: Any = None
         self._use_mock = (
             not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
         )
@@ -315,7 +317,7 @@ class KafkaConsumerClient:
                 await asyncio.sleep(0.1)
                 continue
 
-            retry = 0
+            retry: int = 0
             success = False
 
             while retry <= max_retries and not success:
@@ -336,7 +338,7 @@ class KafkaConsumerClient:
                         await asyncio.to_thread(self._consumer.commit)
 
                 except Exception as e:
-                    retry += 1
+                    retry = retry + 1  # pyre-ignore
                     logger.warning(
                         "Handler failed, retrying",
                         attempt=retry,
@@ -346,11 +348,11 @@ class KafkaConsumerClient:
                     if retry <= max_retries:
                         await asyncio.sleep(2**retry)  # Exponential backoff
 
-            if not success and dlq_producer and dlq_topic:
+            if not success and dlq_topic and dlq_producer is not None:
                 logger.error(
                     "Message sent to DLQ after max retries", dlq_topic=dlq_topic
                 )
-                await dlq_producer.publish(dlq_topic, msg["value"], key=msg.get("key"))
+                await dlq_producer.publish(dlq_topic, msg["value"], key=msg.get("key"))  # pyre-ignore
 
     def stop(self):
         """Gracefully stop the consumer loop."""
@@ -396,7 +398,7 @@ class KafkaAdminManager:
         self.bootstrap_servers = bootstrap_servers or os.getenv(
             "KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"
         )
-        self._admin = None
+        self._admin: Any = None
         self._use_mock = (
             not KAFKA_AVAILABLE or os.getenv("KAFKA_MOCK", "false").lower() == "true"
         )

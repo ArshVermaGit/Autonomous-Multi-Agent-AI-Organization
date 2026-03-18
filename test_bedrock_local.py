@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def test_bedrock():
     aws_key = os.getenv("AWS_ACCESS_KEY_ID")
     aws_secret = os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -25,15 +26,14 @@ def test_bedrock():
         messages = [{"role": "user", "content": [{"text": "Hello"}]}]
 
         response = client.converse(
-            modelId=model_id,
-            messages=messages,
-            inferenceConfig={"maxTokens": 10}
+            modelId=model_id, messages=messages, inferenceConfig={"maxTokens": 10}
         )
         print("Success! Bedrock response received.")
         print(f"Response: {response['output']['message']['content'][0]['text']}")
 
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     test_bedrock()

@@ -145,11 +145,13 @@ class OrchestratorEngine:
                     agent_role=AgentRole.FINANCE,
                     message=f"CRITICAL: Budget Exceeded! ${total:.2f} spent against ${budget:.2f} limit.",
                     level="error",
-                    data={"total": total, "budget": budget}
+                    data={"total": total, "budget": budget},
                 )
             )
 
-        cost_ledger.on_budget_exceeded = lambda t, b: asyncio.create_task(budget_callback(t, b))
+        cost_ledger.on_budget_exceeded = lambda t, b: asyncio.create_task(
+            budget_callback(t, b)
+        )
 
         artifacts = ArtifactsStore(project_id=project_id, output_dir=self.output_dir)
 
@@ -186,7 +188,6 @@ class OrchestratorEngine:
 
         # Run in background
         _bg_task = asyncio.create_task(  # noqa: RUF006
-
             self._run_project_lifecycle(project_id)
         )
         return project_id
@@ -273,7 +274,10 @@ class OrchestratorEngine:
                     )
                     memory.architecture = architecture
                 except Exception as e:
-                    logger.warning("Architecture generation failed, using safety baseline", error=str(e))
+                    logger.warning(
+                        "Architecture generation failed, using safety baseline",
+                        error=str(e),
+                    )
                     memory.architecture = self._generate_fallback_architecture()
             else:
                 logger.warning("Architecture agent missing, using safety baseline")
@@ -433,8 +437,15 @@ class OrchestratorEngine:
                     try:
                         output = await agent.execute_task(task=task, context=exec_ctx)
                     except Exception as e:
-                        if "UnrecognizedClientException" in str(e) or "invalid API key" in str(e).lower():
-                            logger.warning("Primary LLM failed, generating safety baseline output", agent=task.agent_role, task=task.name)
+                        if (
+                            "UnrecognizedClientException" in str(e)
+                            or "invalid API key" in str(e).lower()
+                        ):
+                            logger.warning(
+                                "Primary LLM failed, generating safety baseline output",
+                                agent=task.agent_role,
+                                task=task.name,
+                            )
                             output = self._generate_fallback_task_output(task)
                         else:
                             raise e
@@ -624,6 +635,7 @@ class OrchestratorEngine:
                 level=level,
             )
         )
+
     # -- Status API ------------------------------------------------─
     def get_project_status(self, project_id: str) -> dict[str, Any] | None:
         if project_id not in self._active_projects:
@@ -675,25 +687,28 @@ class OrchestratorEngine:
         """Generate high-quality mock output for a failed agent task to keep the demo moving."""
         if "backend" in task.agent_role.lower():
             return {
-                "api_code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Safety Baseline API\")\n}",
+                "api_code": 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Safety Baseline API")\n}',
                 "status": "baseline_mock",
-                "files_created": ["main.go", "go.mod"]
+                "files_created": ["main.go", "go.mod"],
             }
         elif "frontend" in task.agent_role.lower():
             return {
                 "ui_components": "<div className='p-8 text-center'><h1>Safety Baseline UI</h1></div>",
                 "status": "baseline_mock",
-                "files_created": ["App.tsx", "index.css"]
+                "files_created": ["App.tsx", "index.css"],
             }
         elif "qa" in task.agent_role.lower():
             return {
                 "test_report": "All baseline tests PASSED",
                 "coverage": "85%",
-                "status": "baseline_mock"
+                "status": "baseline_mock",
             }
         elif "devops" in task.agent_role.lower():
             return {
-                "infra_code": "resource \"aws_instance\" \"baseline\" { ... }",
-                "status": "baseline_mock"
+                "infra_code": 'resource "aws_instance" "baseline" { ... }',
+                "status": "baseline_mock",
             }
-        return {"status": "baseline_mock", "message": f"Fallback output for {task.name}"}
+        return {
+            "status": "baseline_mock",
+            "message": f"Fallback output for {task.name}",
+        }

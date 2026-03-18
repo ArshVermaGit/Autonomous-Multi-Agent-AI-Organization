@@ -10,7 +10,7 @@ Implements dynamic agent routing with:
 
 import asyncio
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import structlog
 
@@ -45,7 +45,7 @@ class MoERouter:
     def __init__(self, registry: ExpertRegistry | None = None):
         self._registry = registry or ExpertRegistry()
         self._priority_queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
-        self._routing_history: List[Dict[str, Any]] = []  # Last 1000 decisions
+        self._routing_history: list[dict[str, Any]] = []  # Last 1000 decisions
         self._lock = asyncio.Lock()
 
         logger.info(
@@ -60,7 +60,7 @@ class MoERouter:
         task_id: str,
         project_id: str,
         input_context: str = "",
-        required_skills: List[str] | None = None,
+        required_skills: list[str] | None = None,
         priority: str = "medium",
         force_ensemble: bool = False,
         trace_id: str = "",
@@ -89,7 +89,9 @@ class MoERouter:
         # -- Step -1: Early exit if no experts ----------------------------─
         if not self._registry.all_experts():
             logger.error("No experts registered in the system.")
-            return await self._queue_for_retry(task_id, task_type, task_name, project_id, trace_id)
+            return await self._queue_for_retry(
+                task_id, task_type, task_name, project_id, trace_id
+            )
 
         # -- Step 0: Try Rust Service (Fast Path) --------------------------─
         rust_client = get_rust_client()
@@ -235,14 +237,19 @@ class MoERouter:
         return decision
 
     # -- Batch Routing ------------------------------------------------------
-    async def route_batch(self, tasks: List[Dict[str, Any]]) -> List[MoERouteDecision]:
+    async def route_batch(self, tasks: list[dict[str, Any]]) -> list[MoERouteDecision]:
         """Route multiple tasks in parallel."""
         experts_map = dict(self._registry.all_experts().items())
+        rust_client = get_rust_client()
         if not experts_map:
             logger.error("No experts registered for batch routing.")
             return [
                 await self._queue_for_retry(
-                    t.get("task_id", ""), t.get("task_type", ""), t.get("task_name", ""), t.get("project_id", ""), t.get("trace_id", "")
+                    t.get("task_id", ""),
+                    t.get("task_type", ""),
+                    t.get("task_name", ""),
+                    t.get("project_id", ""),
+                    t.get("trace_id", ""),
                 )
                 for t in tasks
             ]
@@ -328,13 +335,13 @@ class MoERouter:
             if len(self._routing_history) > 1000:
                 self._routing_history.pop(0)
 
-    def get_routing_stats(self) -> Dict[str, Any]:
+    def get_routing_stats(self) -> dict[str, Any]:
         """Return routing statistics for monitoring dashboards."""
         if not self._routing_history:
             return {"total_decisions": 0}
 
-        expert_counts: Dict[str, int] = {}
-        routing_types: Dict[str, int] = {}
+        expert_counts: dict[str, int] = {}
+        routing_types: dict[str, int] = {}
         total_latency = 0.0
 
         for d in self._routing_history:
@@ -356,6 +363,6 @@ class MoERouter:
             / n,
         }
 
-    def get_expert_load_summary(self) -> List[Dict[str, Any]]:
+    def get_expert_load_summary(self) -> list[dict[str, Any]]:
         """Return current expert load for dashboard display."""
         return self._registry.get_all_stats_dict()

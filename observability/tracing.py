@@ -8,7 +8,7 @@ from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
 import functools
 import os
-from typing import Any, Dict
+from typing import Any
 
 import structlog
 
@@ -95,7 +95,7 @@ def init_tracer(
         service_name:  Service name tag (e.g. "ceo-agent", "orchestrator")
         otlp_endpoint: OTLP collector endpoint (default: OTEL_EXPORTER_OTLP_ENDPOINT env var)
     """
-    global _tracer
+    global _tracer  # noqa: PLW0603  # noqa: PLW0603, PLW0602
 
     if not OTEL_AVAILABLE:
         _tracer = _NoOpTracer()
@@ -131,14 +131,14 @@ def init_tracer(
 
 def get_tracer() -> Any:
     """Get the global tracer (lazy init with defaults if not initialized)."""
-    global _tracer
+    global _tracer  # noqa: PLW0602  # noqa: PLW0603, PLW0602
     if _tracer is None:
         init_tracer()
     return _tracer
 
 
 # -- Trace Context Propagation ----------------------------------------------─
-def inject_trace_context(headers: Dict[str, str]) -> Dict[str, str]:
+def inject_trace_context(headers: dict[str, str]) -> dict[str, str]:
     """
     Inject current trace context into headers dict.
     Use when publishing to Kafka or making HTTP calls.
@@ -149,7 +149,7 @@ def inject_trace_context(headers: Dict[str, str]) -> Dict[str, str]:
     return headers
 
 
-def extract_trace_context(headers: Dict[str, str]):
+def extract_trace_context(headers: dict[str, str]):
     """
     Extract trace context from incoming headers.
     Use when consuming from Kafka or receiving HTTP requests.
@@ -164,7 +164,7 @@ def extract_trace_context(headers: Dict[str, str]):
 @contextmanager
 def create_span(
     name: str,
-    attributes: Dict[str, Any] | None = None,
+    attributes: dict[str, Any] | None = None,
     parent_context=None,
     kind: str = "internal",  # "internal" | "server" | "client" | "producer" | "consumer"
 ):
@@ -216,7 +216,7 @@ def create_span(
 @asynccontextmanager
 async def async_span(
     name: str,
-    attributes: Dict[str, Any] | None = None,
+    attributes: dict[str, Any] | None = None,
     parent_context=None,
 ):
     """Async version of create_span."""
@@ -224,13 +224,8 @@ async def async_span(
         yield span
 
 
-<<<<<<< Updated upstream
-# -- Decorator ------------------------------------------------------------─
-def traced(span_name: Optional[str] = None, attributes: Optional[Dict] = None):
-=======
 # ── Decorator ─────────────────────────────────────────────────────────────
-def traced(span_name: str | None = None, attributes: Dict | None = None):
->>>>>>> Stashed changes
+def traced(span_name: str | None = None, attributes: dict | None = None):
     """
     Decorator to automatically trace a function.
 

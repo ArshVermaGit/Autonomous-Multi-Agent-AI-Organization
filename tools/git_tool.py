@@ -93,7 +93,11 @@ class GitTool(BaseTool):
     async def _rewind(self, block_hash: str, force: bool = False) -> ToolResult:
         """Issue #28: Ensure strict regex check on hash to prevent bash injections."""
         if not re.match(r"^[a-f0-9]{40}$", block_hash):
-            return ToolResult(success=False, output="", error="Invalid git hash format. Must be 40 hex characters.")
+            return ToolResult(
+                success=False,
+                output="",
+                error="Invalid git hash format. Must be 40 hex characters.",
+            )
 
         cmd = ["git", "reset"]
         if force:

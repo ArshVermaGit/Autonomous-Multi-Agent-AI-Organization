@@ -138,7 +138,9 @@ Return a JSON object with EXACTLY this structure:
             )
 
         if not isinstance(plan, dict):
-            logger.warning("CEO: LLM response was not a dict, using fallback", type=type(plan))
+            logger.warning(
+                "CEO: LLM response was not a dict, using fallback", type=type(plan)
+            )
             plan = self._extract_plan_fallback(business_idea)
 
         # Normalize features
@@ -146,7 +148,9 @@ Return a JSON object with EXACTLY this structure:
             valid_features = []
             for f in plan["mvp_features"]:
                 if isinstance(f, str):
-                    valid_features.append({"name": f, "priority": "P1", "description": f})
+                    valid_features.append(
+                        {"name": f, "priority": "P1", "description": f}
+                    )
                 elif isinstance(f, dict):
                     valid_features.append(f)
             plan["mvp_features"] = valid_features
