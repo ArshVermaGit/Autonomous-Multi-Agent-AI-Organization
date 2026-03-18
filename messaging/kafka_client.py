@@ -352,7 +352,9 @@ class KafkaConsumerClient:
                 logger.error(
                     "Message sent to DLQ after max retries", dlq_topic=dlq_topic
                 )
-                await dlq_producer.publish(dlq_topic, msg["value"], key=msg.get("key"))  # pyre-ignore
+                await dlq_producer.publish(  # pyre-ignore
+                    dlq_topic, msg["value"], key=msg.get("key")
+                )
 
     def stop(self):
         """Gracefully stop the consumer loop."""
