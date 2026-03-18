@@ -1,4 +1,4 @@
-# Autonomous Multi-Agent AI Organization (Post-Hackathon)
+# Autonomous Multi-Agent AI Organization
 
 [![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -15,6 +15,7 @@
 > **Core Intelligence Features:**
 >
 > - **Native Amazon Nova Integration**: Specialized agents optimized for Nova Pro, Lite, and Micro models.
+>
 - **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
 - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
 - **Production-Grade Shielding**: kernel-level sandboxing (gVisor), secure in-memory secret injection (tmpfs), and automated PII/Key redaction in logs.
