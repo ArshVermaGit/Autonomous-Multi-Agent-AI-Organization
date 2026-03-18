@@ -94,7 +94,9 @@ class EngineerAgent(BaseAgent):
             logger.info("Generating backend using active LLM agent")
             prompt = f"System Architecture:\\n{json.dumps(arch, indent=2)}\\n"
             prompt += "Based on this architecture, output a JSON dictionary mapping absolute file paths (e.g. 'backend/main.py') to their string content. No markdown wrappers. Just valid JSON."
-            response_json_str = await self.call_llm([{"role": "user", "content": prompt}], response_format="json_object")
+            response_json_str = await self.call_llm(
+                [{"role": "user", "content": prompt}], response_format="json_object"
+            )
             if response_json_str:
                 try:
                     response_json = json.loads(response_json_str)
@@ -144,7 +146,9 @@ class EngineerAgent(BaseAgent):
             logger.info("Generating frontend using active LLM agent")
             prompt = f"System Architecture:\\n{json.dumps(arch, indent=2)}\\n"
             prompt += "Based on this architecture, output a JSON dictionary mapping absolute file paths (e.g. 'frontend/package.json') to their string content. No markdown wrappers. Just valid JSON."
-            response_json_str = await self.call_llm([{"role": "user", "content": prompt}], response_format="json_object")
+            response_json_str = await self.call_llm(
+                [{"role": "user", "content": prompt}], response_format="json_object"
+            )
             if response_json_str:
                 try:
                     response_json = json.loads(response_json_str)
@@ -590,7 +594,7 @@ class EngineerAgent(BaseAgent):
         ''').strip()
 
     def _generate_backend_dockerfile(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             FROM python:3.11-slim AS builder
             WORKDIR /app
             COPY requirements.txt .
@@ -612,10 +616,10 @@ class EngineerAgent(BaseAgent):
                 CMD curl -f http://localhost:8000/health || exit 1
 
             CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
-        ''').strip()
+        """).strip()
 
     def _generate_backend_requirements(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             fastapi==0.109.2
             uvicorn[standard]==0.27.1
             pydantic[email]==2.6.1
@@ -630,7 +634,7 @@ class EngineerAgent(BaseAgent):
             redis==5.0.2
             httpx==0.26.0
             structlog==24.1.0
-        ''').strip()
+        """).strip()
 
     def _generate_package_json(self) -> str:
         return json.dumps(
@@ -673,7 +677,7 @@ class EngineerAgent(BaseAgent):
         )
 
     def _generate_next_config(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             /** @type {import('next').NextConfig} */
             const nextConfig = {
               output: 'standalone',
@@ -682,7 +686,7 @@ class EngineerAgent(BaseAgent):
               },
             };
             module.exports = nextConfig;
-        ''').strip()
+        """).strip()
 
     def _generate_tsconfig(self) -> str:
         return json.dumps(
@@ -716,7 +720,7 @@ class EngineerAgent(BaseAgent):
         )
 
     def _generate_home_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import Link from 'next/link';
             export default function Home() {
               return (
@@ -740,10 +744,10 @@ class EngineerAgent(BaseAgent):
                 </main>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_layout(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import type { Metadata } from 'next';
             import { Inter } from 'next/font/google';
             import './globals.css';
@@ -762,10 +766,10 @@ class EngineerAgent(BaseAgent):
                 </html>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_dashboard_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import { useState, useEffect } from 'react';
             import Navbar from '@/components/Navbar';
@@ -807,10 +811,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_login_page(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import { useState } from 'react';
             import { useRouter } from 'next/navigation';
@@ -853,10 +857,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_navbar(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             import Link from 'next/link';
             export default function Navbar() {
@@ -871,10 +875,10 @@ class EngineerAgent(BaseAgent):
                 </nav>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_data_table(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             "use client";
             interface Item { id: string; title: string; description?: string; status: string; created_at: string; }
             export default function DataTable({ items }: { items: Item[] }) {
@@ -912,10 +916,10 @@ class EngineerAgent(BaseAgent):
                 </div>
               );
             }
-        ''').strip()
+        """).strip()
 
     def _generate_api_client(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             import axios from 'axios';
             const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
             export const api = axios.create({ baseURL: API_URL });
@@ -934,10 +938,10 @@ class EngineerAgent(BaseAgent):
                 return Promise.reject(err);
               }
             );
-        ''').strip()
+        """).strip()
 
     def _generate_frontend_dockerfile(self) -> str:
-        return textwrap.dedent('''
+        return textwrap.dedent("""
             FROM node:20-alpine AS builder
             WORKDIR /app
             COPY package*.json ./
@@ -960,4 +964,4 @@ class EngineerAgent(BaseAgent):
             HEALTHCHECK --interval=30s --timeout=5s \\
                 CMD wget -qO- http://localhost:3000/api/health || exit 1
             CMD ["node", "server.js"]
-        ''').strip()
+        """).strip()

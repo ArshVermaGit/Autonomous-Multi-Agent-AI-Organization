@@ -411,7 +411,9 @@ Always produce valid, runnable pytest code.
             fail_under = 70
         """).strip()
 
-    async def _run_test_suite(self, api_contracts: list[dict], context: Any, sandbox_tool: Any) -> dict[str, Any]:
+    async def _run_test_suite(
+        self, api_contracts: list[dict], context: Any, sandbox_tool: Any
+    ) -> dict[str, Any]:
         """Attempt to execute testing via Docker Sandbox, falling back to mock if not available."""
         if context and context.project_id and sandbox_tool:
             work_dir = f"{context.artifacts.output_dir}/{context.project_id}"
@@ -419,7 +421,9 @@ Always produce valid, runnable pytest code.
 
             try:
                 # Issue #19: We actually call the tool.
-                result = await sandbox_tool.run("pytest --maxfail=1 --disable-warnings -q", work_dir)
+                result = await sandbox_tool.run(
+                    "pytest --maxfail=1 --disable-warnings -q", work_dir
+                )
                 is_passed = result.get("returncode", 1) == 0
                 return {
                     "total": len(api_contracts) * 2,
@@ -427,10 +431,21 @@ Always produce valid, runnable pytest code.
                     "failed": 0 if is_passed else 1,
                     "errors": 0,
                     "duration_seconds": 2.5,
-                    "failures": [] if is_passed else [{"test": "pytest suite", "error": result.get("stderr", "Unknown sandbox error")}],
+                    "failures": (
+                        []
+                        if is_passed
+                        else [
+                            {
+                                "test": "pytest suite",
+                                "error": result.get("stderr", "Unknown sandbox error"),
+                            }
+                        ]
+                    ),
                 }
             except Exception as e:
-                logger.warning("Sandbox execution failed, falling back to simulation", error=str(e))
+                logger.warning(
+                    "Sandbox execution failed, falling back to simulation", error=str(e)
+                )
 
         # Fallback simulation
         total = 20 + len(api_contracts) * 2
@@ -444,15 +459,20 @@ Always produce valid, runnable pytest code.
             "failures": [],
         }
 
-    async def _run_security_scan(self, context: Any, sandbox_tool: Any) -> dict[str, Any]:
+    async def _run_security_scan(
+        self, context: Any, sandbox_tool: Any
+    ) -> dict[str, Any]:
         """Attempt to execute Bandit via Docker Sandbox, falling back to mock."""
         if context and context.project_id and sandbox_tool:
             work_dir = f"{context.artifacts.output_dir}/{context.project_id}"
             logger.info("Executing bandit safely in sandbox overlay", work_dir=work_dir)
             try:
-                result = await sandbox_tool.run("bandit -r . -f json -q || true", work_dir)
+                result = await sandbox_tool.run(
+                    "bandit -r . -f json -q || true", work_dir
+                )
                 try:
                     import json
+
                     bandit_data = json.loads(result.get("stdout", "{}"))
                     metrics = bandit_data.get("metrics", {}).get("_totals", {})
                     return {
@@ -461,12 +481,15 @@ Always produce valid, runnable pytest code.
                         "high_severity": metrics.get("SEVERITY.HIGH", 0),
                         "medium_severity": metrics.get("SEVERITY.MEDIUM", 0),
                         "low_severity": metrics.get("SEVERITY.LOW", 0),
-                        "issues": bandit_data.get("results", [])
+                        "issues": bandit_data.get("results", []),
                     }
                 except json.JSONDecodeError:
                     pass
             except Exception as e:
-                logger.warning("Sandbox security scan failed, falling back to simulation", error=str(e))
+                logger.warning(
+                    "Sandbox security scan failed, falling back to simulation",
+                    error=str(e),
+                )
 
         # Simulate baseline
         return {

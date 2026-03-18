@@ -3,10 +3,11 @@ Skills Registry Tool - The "ClawHub Integration" for loading external capabiliti
 Allows the AI to dynamically discover and download new execution skills to its sandbox.
 """
 
-from typing import Dict, Any
 import importlib
-import sys
 import os
+import sys
+from typing import Any
+
 import structlog
 
 from .base_tool import BaseTool, ToolResult
@@ -23,7 +24,7 @@ class SkillsRegistryTool(BaseTool):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.installed_skills: Dict[str, Any] = {}
+        self.installed_skills: dict[str, Any] = {}
         self.skills_dir = os.path.join(self.working_dir, ".skills")
         os.makedirs(self.skills_dir, exist_ok=True)
         # Ensure our temporary skills are importable

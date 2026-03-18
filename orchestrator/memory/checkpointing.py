@@ -94,7 +94,9 @@ class CheckpointManager:
 
         # Verify state file integrity before committing
         if not os.path.exists(state_file):
-             logger.warning("Memory state file missing during checkpoint, skipping barrier verification")
+            logger.warning(
+                "Memory state file missing during checkpoint, skipping barrier verification"
+            )
 
         diff_res = await self.git.run("diff", staged=True)
         if not diff_res.output.strip():
@@ -135,14 +137,18 @@ class CheckpointManager:
                         checkpoints.append({"hash": parts[0], "message": parts[1]})
         return checkpoints
 
-    async def rewind(self, commit_hash: str, force: bool = False) -> dict[str, Any] | None:
+    async def rewind(
+        self, commit_hash: str, force: bool = False
+    ) -> dict[str, Any] | None:
         """
         Hard undo to a precise checkpoint hash.
         Cleans the workspace and returns the restored ProjectMemory state for the Orchestrator.
         Requires force=True to execute.
         """
         if not force:
-            logger.error("Rewind aborted. 'force=True' is required for destructive checkpoint rewinds.")
+            logger.error(
+                "Rewind aborted. 'force=True' is required for destructive checkpoint rewinds."
+            )
             return None
 
         await self._ensure_git_repo()

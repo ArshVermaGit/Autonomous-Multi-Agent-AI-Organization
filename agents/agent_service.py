@@ -17,8 +17,7 @@ import os
 import signal
 import time
 import traceback
-from typing import Any, Dict, Optional
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -107,7 +106,10 @@ def _build_llm_client(llm_config: dict, agent_role: str):
                 logger.info("Bedrock client built", model=model, region=region)
                 return client, model, provider
             except Exception as e:
-                logger.warning("Failed to initialize Bedrock client, falling back to mock mode", error=str(e))
+                logger.warning(
+                    "Failed to initialize Bedrock client, falling back to mock mode",
+                    error=str(e),
+                )
                 return None, model, provider
 
         else:
@@ -155,9 +157,9 @@ class AgentMicroservice:
         ) or KafkaTopics.task_topic_for_role(self.role)
         self.group_id = os.getenv("KAFKA_CONSUMER_GROUP", f"{self.role.lower()}-group")
         self.running = True
-        self.agent: Optional[Any] = None
-        self.consumer: Optional["KafkaConsumerClient"] = None
-        self.producer: Optional["KafkaProducerClient"] = None
+        self.agent: Any | None = None
+        self.consumer: KafkaConsumerClient | None = None
+        self.producer: KafkaProducerClient | None = None
         self._tasks_done = 0
         self._tasks_failed = 0
 
@@ -223,8 +225,12 @@ class AgentMicroservice:
 
     async def _health_server(self, port: int = 8000):
         """Native asyncio HTTP server to reply to Docker healthchecks."""
-        async def handle_request(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+
+        async def handle_request(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ):
             import contextlib
+
             with contextlib.suppress(Exception):
                 # Read just enough to clear the buffer loosely
                 await asyncio.wait_for(reader.read(1024), timeout=1.0)
@@ -233,7 +239,7 @@ class AgentMicroservice:
             await writer.drain()
             writer.close()
 
-        server = await asyncio.start_server(handle_request, '0.0.0.0', port)
+        server = await asyncio.start_server(handle_request, "0.0.0.0", port)
         logger.info("Health check server listening", port=port)
         async with server:
             await server.serve_forever()
@@ -254,12 +260,14 @@ class AgentMicroservice:
             try:
                 task_msg = TaskMessage(**raw_msg)
             except Exception as e:
-                raw_preview = str(raw_msg)
+                _ = str(raw_msg)
                 logger.error(
                     "Failed to parse TaskMessage",
                     error=str(e),
                     raw_preview=(
-                        raw_preview[:500] if len(raw_preview) > 500 else raw_preview
+                        cast(str, str(raw_msg))[:500]
+                        if len(cast(str, str(raw_msg))) > 500
+                        else cast(str, str(raw_msg))
                     ),
                 )
                 await self._emit_error_event(
@@ -280,7 +288,11 @@ class AgentMicroservice:
                         "raw_message": raw_msg,
                     }
                     try:
-                        await self.producer.publish_json("ai-org.dlq", dlq_payload, key="parse-error")
+                        producer = self.producer
+                        assert producer is not None
+                        await producer.publish_json(
+                            "ai-org.dlq", dlq_payload, key="parse-error"
+                        )
                     except Exception as pub_err:
                         logger.error("Failed to publish to DLQ", error=str(pub_err))
                 continue
@@ -370,7 +382,6 @@ class AgentMicroservice:
             agent = self.agent
             if not agent:
                 raise RuntimeError("Agent not initialized")
-            output = await agent.execute_task(
             output = await agent_instance.execute_task(
                 task=_TaskProxy(),
                 context=_build_minimal_context(task_msg),
@@ -404,7 +415,7 @@ class AgentMicroservice:
 
             producer = self.producer
             if not producer:
-                raise RuntimeError("Producer not initialized")
+                raise RuntimeError("Producer not initialized") from None
 
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
             await producer.publish_model(result_topic, result, key=task_msg.task_id)
@@ -435,7 +446,7 @@ class AgentMicroservice:
                 "Task failed",
                 task_id=task_msg.task_id,
                 error=err_str,
-                trace=traceback.format_exc()[-500:],  # type: ignore[index]
+                trace=cast(str, traceback.format_exc())[-500:],
                 role=self.role,
             )
 
@@ -451,7 +462,7 @@ class AgentMicroservice:
             )
 
             if self.producer is None:
-                raise RuntimeError("Producer not initialized")
+                raise RuntimeError("Producer not initialized") from None
             result_topic = KafkaTopics.results_topic(task_msg.project_id)
             await self.producer.publish_model(  # type: ignore[union-attr]
                 result_topic, result, key=task_msg.task_id
@@ -460,7 +471,7 @@ class AgentMicroservice:
             await self._emit_event(
                 project_id=task_msg.project_id,
                 event_type="task_failed",
-                message=f"[{self.role}] Failed: {task_msg.task_name} - {err_str[:100]}",  # type: ignore[index]
+                message=f"[{self.role}] Failed: {task_msg.task_name} — {cast(str, err_str)[:100]}",
                 data={"task_id": task_msg.task_id, "error": err_str},
                 level="error",
                 trace_id=task_msg.trace_id,

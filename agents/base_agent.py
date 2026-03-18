@@ -4,16 +4,16 @@ Abstract base class for all AI agents in the organization.
 Provides LLM invocation, memory access, tool calling, and event emission.
 """
 
-import asyncio
-import json
-import os
 from abc import ABC, abstractmethod
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+import json
+import os
+from typing import Any, cast
 
-import structlog
 from google.genai import types
+import structlog
 
 from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
@@ -23,14 +23,14 @@ logger = structlog.get_logger(__name__)
 
 def _clean_json_response(text: str) -> str:
     """Strip Markdown formatting (e.g. ```json ... ```) from LLM output."""
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+    text = cast(str, text).strip()
+    if cast(str, text).startswith("```json"):
+        text = cast(str, text)[7:]
+    elif cast(str, text).startswith("```"):
+        text = cast(str, text)[3:]
+    if cast(str, text).endswith("```"):
+        text = cast(str, text)[:-3]
+    return cast(str, text).strip()
 
 
 class AgentToolCall:
@@ -85,16 +85,18 @@ class BaseAgent(ABC):
     @staticmethod
     def get_secret(name: str, default: str | None = None) -> str | None:
         """
-        Securely retrieve a secret. 
+        Securely retrieve a secret.
         Checks /run/secrets/ai-org/ first (tmpfs), then environment variables.
         """
         secret_path = f"/run/secrets/ai-org/{name}"
         if os.path.exists(secret_path):
             try:
-                with open(secret_path, "r") as f:
+                with open(secret_path) as f:
                     return f.read().strip()
             except Exception as e:
-                logger.error("Failed to read secret from tmpfs", name=name, error=str(e))
+                logger.error(
+                    "Failed to read secret from tmpfs", name=name, error=str(e)
+                )
 
         return os.getenv(name, default)
 
@@ -114,10 +116,10 @@ class BaseAgent(ABC):
         logger.info("Executing task", agent=self.ROLE, task=task.name, task_id=task.id)
         self._current_task_id = task.id
         self._current_task_version = getattr(task, "version", 1)
-        
+
         # Start background heartbeat
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-        
+
         try:
             return await self.run(task=task, context=context)
         finally:
@@ -150,10 +152,12 @@ class BaseAgent(ABC):
             "timestamp": datetime.now(UTC).isoformat(),
             "agent_role": self.ROLE,
             "progress": f"Executing iteration {self._iteration_count}",
-            "version": self._current_task_version
+            "version": self._current_task_version,
         }
-        
-        await self.kafka_producer.publish_json(heartbeat_topic, payload, key=self._current_task_id)
+
+        await self.kafka_producer.publish_json(
+            heartbeat_topic, payload, key=self._current_task_id
+        )
         logger.debug("Heartbeat sent", task_id=self._current_task_id)
 
     # -- LLM Interface ----------------------------------------------

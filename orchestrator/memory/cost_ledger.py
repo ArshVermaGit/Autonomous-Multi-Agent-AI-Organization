@@ -113,7 +113,9 @@ class CostLedger:
         """Naive linear projection based on current spend rate, requiring a threshold elapsed time to be accurate."""
         if not self._entries:
             return 0.0
-        elapsed_hours = (datetime.now(UTC) - self._entries[0].timestamp).total_seconds() / 3600
+        elapsed_hours = (
+            datetime.now(UTC) - self._entries[0].timestamp
+        ).total_seconds() / 3600
 
         # Don't linearly project costs if the project has run for less than 1 hour, to avoid extreme edge cases (Issue #17)
         if elapsed_hours < 1.0:

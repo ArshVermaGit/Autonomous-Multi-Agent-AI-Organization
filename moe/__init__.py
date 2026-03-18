@@ -1,11 +1,11 @@
-from .router import MoERouter
 from .expert_registry import ExpertRegistry
-from .scoring import compute_expert_score, task_type_to_vector, cosine_similarity
+from .router import MoERouter
+from .scoring import compute_expert_score, cosine_similarity, task_type_to_vector
 
 __all__ = [
-    "MoERouter",
     "ExpertRegistry",
+    "MoERouter",
     "compute_expert_score",
-    "task_type_to_vector",
     "cosine_similarity",
+    "task_type_to_vector",
 ]

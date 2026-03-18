@@ -5,6 +5,7 @@ class AgentRole(StrEnum):
     """
     Explicitly typed roles for multi-agent system coordination.
     """
+
     CEO = "CEO"
     CTO = "CTO"
     ENGINEER_BACKEND = "Engineer_Backend"

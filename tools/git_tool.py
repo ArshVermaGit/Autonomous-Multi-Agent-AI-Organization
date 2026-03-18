@@ -5,8 +5,9 @@ Handles: init, clone, add, commit, push, branch, status, diff.
 
 import os
 import re
-from typing import Optional
+
 import structlog
+
 from .base_tool import BaseTool, ToolResult
 
 logger = structlog.get_logger(__name__)
@@ -17,7 +18,7 @@ class GitTool(BaseTool):
     DESCRIPTION = "Git repository operations: init, clone, commit, push, branch"
     TIMEOUT_S = 60
 
-    def __init__(self, repo_path: Optional[str] = None, **kwargs):
+    def __init__(self, repo_path: str | None = None, **kwargs):
         super().__init__(**kwargs)
         self.repo_path = repo_path or self.working_dir
 
@@ -40,7 +41,7 @@ class GitTool(BaseTool):
             )
         return await fn(**kwargs)
 
-    async def _init(self, path: Optional[str] = None) -> ToolResult:
+    async def _init(self, path: str | None = None) -> ToolResult:
         target = path or self.repo_path
         os.makedirs(target, exist_ok=True)
         result = await self._run_subprocess(["git", "init"], cwd=target)
@@ -54,7 +55,7 @@ class GitTool(BaseTool):
             )
         return result
 
-    async def _clone(self, url: str, target_dir: Optional[str] = None) -> ToolResult:
+    async def _clone(self, url: str, target_dir: str | None = None) -> ToolResult:
         cmd = ["git", "clone", url]
         if target_dir:
             cmd.append(target_dir)
@@ -92,14 +93,18 @@ class GitTool(BaseTool):
     async def _rewind(self, block_hash: str, force: bool = False) -> ToolResult:
         """Issue #28: Ensure strict regex check on hash to prevent bash injections."""
         if not re.match(r"^[a-f0-9]{40}$", block_hash):
-            return ToolResult(success=False, output="", error="Invalid git hash format. Must be 40 hex characters.")
-            
+            return ToolResult(
+                success=False,
+                output="",
+                error="Invalid git hash format. Must be 40 hex characters.",
+            )
+
         cmd = ["git", "reset"]
         if force:
             cmd.append("--hard")
         else:
             cmd.append("--soft")
-            
+
         cmd.append(block_hash)
         return await self._run_subprocess(cmd, cwd=self.repo_path)
 

@@ -8,11 +8,11 @@
     "."
   ],
   "exclude": [
-    ".venv",
-    "node_modules",
     "dashboard",
     "go-backend",
     "moe-scoring",
+    "**/node_modules",
+    "**/.venv",
     "**/__pycache__"
   ],
   "strict": false,

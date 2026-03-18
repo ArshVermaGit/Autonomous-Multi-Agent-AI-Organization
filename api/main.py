@@ -5,15 +5,14 @@ Provides REST API + WebSocket for real-time agent event streaming.
 """
 
 import asyncio
-import os
-import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+import os
+import time
 from typing import Any
 
 import boto3
-import structlog
 from dotenv import load_dotenv
 from fastapi import (
     Depends,
@@ -29,9 +28,9 @@ from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from google import genai
 from pydantic import BaseModel, Field
+import structlog
 
-from messaging.kafka_client import KafkaProducerClient
-
+from agents.base_agent import BaseAgent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
 from agents.devops_agent import DevOpsAgent
@@ -40,7 +39,7 @@ from agents.finance_agent import FinanceAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
 from agents.roles import AgentRole
-from agents.base_agent import BaseAgent
+from messaging.kafka_client import KafkaProducerClient
 from orchestrator.planner import ExecutionEvent, OrchestratorEngine
 
 logger = structlog.get_logger(__name__)
@@ -54,7 +53,9 @@ gemini_client = None
 bedrock_client = None
 
 # -- Google Gemini Setup ------------------------------------------
-gemini_key = BaseAgent.get_secret("GOOGLE_API_KEY") or BaseAgent.get_secret("GEMINI_API_KEY")
+gemini_key = BaseAgent.get_secret("GOOGLE_API_KEY") or BaseAgent.get_secret(
+    "GEMINI_API_KEY"
+)
 if gemini_key and gemini_key != "your-gemini-key" and gemini_key.startswith("AIza"):
     gemini_client = genai.Client(api_key=gemini_key)
     logger.info("Google Gemini client initialized")
@@ -62,7 +63,9 @@ if gemini_key and gemini_key != "your-gemini-key" and gemini_key.startswith("AIz
 # -- Amazon Bedrock Setup ------------------------------------------
 aws_key = BaseAgent.get_secret("AWS_ACCESS_KEY_ID")
 aws_secret = BaseAgent.get_secret("AWS_SECRET_ACCESS_KEY")
-aws_session = BaseAgent.get_secret("AWS_SESSION_TOKEN")  # Support for temporary credentials
+aws_session = BaseAgent.get_secret(
+    "AWS_SESSION_TOKEN"
+)  # Support for temporary credentials
 aws_region = os.getenv("AWS_REGION", "us-east-1")
 
 if aws_key and aws_key != "your-access-key-id":
@@ -73,7 +76,11 @@ if aws_key and aws_key != "your-access-key-id":
         aws_session_token=aws_session,
         region_name=aws_region,
     )
-    logger.info("Amazon Bedrock (Nova) client initialized", region=aws_region, session_token_used=bool(aws_session))
+    logger.info(
+        "Amazon Bedrock (Nova) client initialized",
+        region=aws_region,
+        session_token_used=bool(aws_session),
+    )
 else:
     logger.warning(
         "No AWS Bedrock credentials found. Agents will fall back to Gemini or Mock."
@@ -89,6 +96,7 @@ kafka_producer = KafkaProducerClient()
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
+
 async def verify_api_key(api_key: str = Security(api_key_header)):
     """Dependency to enforce X-API-Key header authentication."""
     if os.getenv("AUTH_DISABLED") == "true":
@@ -96,8 +104,12 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
 
     expected_key = os.getenv("API_KEY")
     if not expected_key:
-        logger.warning("API_KEY environment variable is not set. All secure requests will be rejected.")
-        raise HTTPException(status_code=403, detail="Server misconfiguration: No API key defined")
+        logger.warning(
+            "API_KEY environment variable is not set. All secure requests will be rejected."
+        )
+        raise HTTPException(
+            status_code=403, detail="Server misconfiguration: No API key defined"
+        )
 
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Could not validate API key")
@@ -129,7 +141,10 @@ class ConnectionManager:
                 # Issue #25: Prevent slow clients from freezing the event loop
                 await asyncio.wait_for(ws.send_json(data), timeout=0.5)
             except TimeoutError:
-                logger.warning("WebSocket broadcast timeout, dropping message", project_id=project_id)
+                logger.warning(
+                    "WebSocket broadcast timeout, dropping message",
+                    project_id=project_id,
+                )
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -159,31 +174,89 @@ async def lifespan(app: FastAPI):
 
     # CEO
     client, model, provider, producer = get_agent_config(AgentRole.CEO)
-    orchestrator.register_agent(AgentRole.CEO, CEOAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.CEO,
+        CEOAgent(
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # CTO
     client, model, provider, producer = get_agent_config(AgentRole.CTO)
-    orchestrator.register_agent(AgentRole.CTO, CTOAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.CTO,
+        CTOAgent(
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # Backend Engineer
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_BACKEND)
-    orchestrator.register_agent(AgentRole.ENGINEER_BACKEND, EngineerAgent(mode="backend", llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.ENGINEER_BACKEND,
+        EngineerAgent(
+            mode="backend",
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # Frontend Engineer
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_FRONTEND)
-    orchestrator.register_agent(AgentRole.ENGINEER_FRONTEND, EngineerAgent(mode="frontend", llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.ENGINEER_FRONTEND,
+        EngineerAgent(
+            mode="frontend",
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # QA
     client, model, provider, producer = get_agent_config(AgentRole.QA)
-    orchestrator.register_agent(AgentRole.QA, QAAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.QA,
+        QAAgent(
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # DevOps
     client, model, provider, producer = get_agent_config(AgentRole.DEVOPS)
-    orchestrator.register_agent(AgentRole.DEVOPS, DevOpsAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.DEVOPS,
+        DevOpsAgent(
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     # Finance
     client, model, provider, producer = get_agent_config(AgentRole.FINANCE)
-    orchestrator.register_agent(AgentRole.FINANCE, FinanceAgent(llm_client=client, model_name=model, provider=provider, kafka_producer=producer))
+    orchestrator.register_agent(
+        AgentRole.FINANCE,
+        FinanceAgent(
+            llm_client=client,
+            model_name=model,
+            provider=provider,
+            kafka_producer=producer,
+        ),
+    )
 
     logger.info("All agents registered and ready")
     yield
@@ -211,16 +284,22 @@ RATE_LIMIT_DURATION = 60
 RATE_LIMIT_REQUESTS = 60
 request_counts = defaultdict(list)
 
+
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     client_ip = request.client.host if request.client else "127.0.0.1"
     now = time.time()
 
     # Fast prune old requests
-    request_counts[client_ip] = [t for t in request_counts[client_ip] if now - t < RATE_LIMIT_DURATION]
+    request_counts[client_ip] = [
+        t for t in request_counts[client_ip] if now - t < RATE_LIMIT_DURATION
+    ]
 
     if len(request_counts[client_ip]) >= RATE_LIMIT_REQUESTS:
-        return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded. Please try again later."})
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded. Please try again later."},
+        )
 
     request_counts[client_ip].append(now)
     return await call_next(request)
@@ -228,7 +307,9 @@ async def rate_limit_middleware(request: Request, call_next):
 
 # -- Request/Response Models ----------------------------------------
 class StartProjectRequest(BaseModel):
-    idea: str = Field(..., min_length=5, max_length=1000, description="The core business idea")
+    idea: str = Field(
+        ..., min_length=5, max_length=1000, description="The core business idea"
+    )
     budget: dict[str, Any] = Field(default_factory=lambda: {"max_cost_usd": 200.0})
     name: str | None = Field(default="", max_length=100)
     constraints: dict[str, Any] | None = None
@@ -252,14 +333,16 @@ async def health():
     return {
         "status": "healthy",
         "timestamp": datetime.now(UTC).isoformat(),
-        "uptime_seconds": 3600, # Mock uptime
+        "uptime_seconds": 3600,  # Mock uptime
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
     }
 
 
 @app.post("/v1/projects", status_code=202)
-async def start_project(request: StartProjectRequest, api_key: str = Depends(verify_api_key)):
+async def start_project(
+    request: StartProjectRequest, api_key: str = Depends(verify_api_key)
+):
     """
     MAIN ENDPOINT: Submit a business idea and launch the AI company.
     Returns a project_id for WebSocket streaming and status polling.
@@ -272,8 +355,7 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.idea,
-        user_constraints=request.constraints or {}
+        business_idea=request.idea, user_constraints=request.constraints or {}
     )
 
     # Subscribe the event broadcaster for this project
@@ -291,7 +373,7 @@ async def start_project(request: StartProjectRequest, api_key: str = Depends(ver
         "progress_pct": 0,
         "tasks_total": 0,
         "tasks_done": 0,
-        "created_at": datetime.now(UTC).isoformat()
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -385,7 +467,9 @@ class WebhookPayload(BaseModel):
 
 
 @app.post("/api/webhooks/{channel}")
-async def omni_channel_webhook(channel: str, payload: WebhookPayload, api_key: str = Depends(verify_api_key)):
+async def omni_channel_webhook(
+    channel: str, payload: WebhookPayload, api_key: str = Depends(verify_api_key)
+):
     """
     Omni-channel control plane integration.
     Allows passing messages from Slack, Discord, or Telegram to the CEO/Orchestrator.
@@ -425,11 +509,17 @@ async def websocket_events(websocket: WebSocket, project_id: str):
         if os.getenv("AUTH_DISABLED") != "true":
             try:
                 auth_msg = await asyncio.wait_for(websocket.receive_json(), timeout=5.0)
-                if auth_msg.get("type") != "authenticate" or auth_msg.get("api_key") != os.getenv("API_KEY"):
-                    await websocket.send_json({"type": "error", "message": "Authentication failed"})
+                if auth_msg.get("type") != "authenticate" or auth_msg.get(
+                    "api_key"
+                ) != os.getenv("API_KEY"):
+                    await websocket.send_json(
+                        {"type": "error", "message": "Authentication failed"}
+                    )
                     raise WebSocketDisconnect("Authentication failed")
             except TimeoutError:
-                await websocket.send_json({"type": "error", "message": "Authentication timeout"})
+                await websocket.send_json(
+                    {"type": "error", "message": "Authentication timeout"}
+                )
                 raise WebSocketDisconnect("Authentication timeout") from None
 
         await websocket.send_json(

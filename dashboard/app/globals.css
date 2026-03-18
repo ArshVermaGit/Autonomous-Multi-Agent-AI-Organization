@@ -1,10 +1,12 @@
+/* @tailwind base; */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design Tokens ─────────────────────────────────────────── */
+/* ── Design Tokens (Forced Light Mode) ─────────────────────────────────────────── */
 :root {
   --bg-primary:   #ffffff;
   --bg-secondary: #f8fafc;
@@ -12,27 +14,16 @@
   --bg-hover:     #f1f5f9;
   --bg-border:    #e2e8f0;
 
-  --accent-emerald: #10b981;
-  --accent-emerald-light: #34d399;
-  --accent-cyan:    #06b6d4;
-  --accent-blue:    #3b82f6;
-  --accent-purple:  #8b5cf6;
+  --accent-emerald:   #10b981;
+  --accent-cyan:      #06b6d4;
+  --accent-blue:      #3b82f6;
+  --accent-purple:    #8b5cf6;
+  --accent-fuchsia:   #d946ef;
+  --accent-gradient:  linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
 
   --text-primary:   #0f172a;
-  --text-secondary: #334155;
-  --text-muted:     #64748b;
-}
-
-/* Dark mode overrides (optional fallback if user wants it, but default is light for slashy vibe) */
-.dark {
-  --bg-primary:   #09090b;
-  --bg-secondary: #121214;
-  --bg-card:      #18181b;
-  --bg-hover:     #27272a;
-  --bg-border:    #27272a;
-  --text-primary:   #f4f4f5;
-  --text-secondary: #a1a1aa;
-  --text-muted:     #71717a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
 }
 
 /* ── Base ───────────────────────────────────────────────────── */
@@ -58,65 +49,35 @@ body {
 
 /* ── Component Classes ──────────────────────────────────────── */
 @layer components {
-  /* Mesh Gradients mimicking Slashy.ai hero */
-  .mesh-gradient-hero {
-    background-color: #a855f7;
-    background-image: 
-      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-      radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-      radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-    /* Default is dark/vibrant for the hero block */
-    background: linear-gradient(120deg, #9333ea, #3b82f6, #14b8a6);
-    background-size: 200% 200%;
-    animation: gradientMove 15s ease infinite;
-  }
 
+  /* New soft mesh blobs for light theme */
   .mesh-blob-1 {
     position: absolute;
-    top: -100px;
-    left: -100px;
-    width: 500px;
-    height: 500px;
-    background: #c084fc;
-    filter: blur(100px);
-    opacity: 0.3;
-    border-radius: 50%;
+    top: -10%;
+    left: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, rgba(233,213,255,0.8) 0%, rgba(255,255,255,0) 70%);
     z-index: 0;
   }
 
   .mesh-blob-2 {
     position: absolute;
-    bottom: -100px;
-    right: -100px;
-    width: 600px;
-    height: 600px;
-    background: #60a5fa;
-    filter: blur(120px);
-    opacity: 0.3;
-    border-radius: 50%;
-    z-index: 0;
-  }
-
-  .mesh-blob-3 {
-    position: absolute;
-    top: 30%;
-    left: 40%;
-    width: 400px;
-    height: 400px;
-    background: #2dd4bf;
-    filter: blur(100px);
-    opacity: 0.2;
-    border-radius: 50%;
+    bottom: -10%;
+    right: -10%;
+    width: 70vw;
+    height: 70vw;
+    background: radial-gradient(circle, rgba(191,219,254,0.7) 0%, rgba(255,255,255,0) 70%);
     z-index: 0;
   }
 
   .card-light {
-    @apply bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-white border border-slate-200 rounded-2xl p-8 shadow-sm hover:shadow-lg transition-shadow duration-300;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-900 hover:bg-slate-800
-           text-white text-sm font-semibold transition-all duration-150 active:scale-95 shadow-lg shadow-slate-900/20;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#0f111a] hover:bg-black
+           text-white text-sm font-semibold transition-all duration-150 active:scale-95 shadow-lg;
   }
   
   .btn-secondary {
@@ -124,9 +85,8 @@ body {
            text-slate-900 text-sm font-semibold transition-all duration-150 active:scale-95 shadow-sm;
   }
 
-  /* Status badges */
   .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-white/10 backdrop-blur-md text-white border border-white/20 shadow-sm;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest bg-white border border-slate-200 text-slate-800 shadow-sm;
   }
 }
 
@@ -138,30 +98,14 @@ body {
     background-clip: text;
   }
   .glass-header {
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(0,0,0,0.05);
   }
-  .dark .glass-header {
-    background: rgba(9, 9, 11, 0.8);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
 }
 
 /* ── Custom Animations ──────────────────────────────────────── */
-@keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes pulse-ring {
-  0%   { transform: scale(1);   opacity: 1; }
-  70%  { transform: scale(1.4); opacity: 0.3; }
-  100% { transform: scale(1);   opacity: 1; }
-}
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -172,12 +116,11 @@ body {
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-8px) scale(1.02); }
+  100% { transform: translateY(0px) scale(1); }
 }
 
 .animate-float {
-  animation: float 6s ease-in-out infinite;
+  animation: float 4s ease-in-out infinite;
 }
-

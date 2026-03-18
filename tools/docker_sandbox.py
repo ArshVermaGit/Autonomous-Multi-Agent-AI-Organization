@@ -6,6 +6,7 @@ No internet access by default unless explicitly allowed.
 
 import os
 import uuid
+
 import structlog
 
 from .base_tool import BaseTool, ToolResult
@@ -40,10 +41,9 @@ class DockerSandboxTool(BaseTool):
         """
         Spins up an ephemeral container mapped to the project workspace.
         """
-        container_name = f"ai-org-sandbox-{uuid.uuid4().hex[:8]}"
-        logger.info(
-            "Spawning execution sandbox", container=container_name[:12], image=image
-        )
+        container_name: str = f"ai-org-sandbox-{uuid.uuid4().hex[:8]}"
+        c_name: str = container_name
+        logger.info("Spawning execution sandbox", container=c_name[:12], image=image)
 
         # Build the docker run command to ensure isolation
         docker_cmd = [
@@ -77,11 +77,11 @@ class DockerSandboxTool(BaseTool):
         result = await self._run_subprocess(docker_cmd)
 
         if result.success:
-            logger.info("Sandbox execution succeeded", container=container_name[:12])
+            logger.info("Sandbox execution succeeded", container=c_name[:12])
         else:
             logger.warning(
                 "Sandbox execution failed",
-                container=container_name[:12],
+                container=c_name[:12],
                 error=result.error,
             )
 

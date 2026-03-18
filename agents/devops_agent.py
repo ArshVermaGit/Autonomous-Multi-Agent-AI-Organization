@@ -7,7 +7,6 @@ and orchestrates the full AWS deployment lifecycle.
 import textwrap
 
 # from collections.abc import Generator (removed unused)
-from typing import Any, Dict, Optional
 from typing import Any
 
 import structlog
@@ -54,7 +53,7 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
     ) -> dict[str, Any]:
         """Generate all infrastructure code and simulate deployment."""
         # Fix: Ensure arch is a dict to avoid "Cannot index into str" errors later
-        arch: Dict[str, Any] = {}
+        arch: dict[str, Any] = {}
         if (
             context
             and hasattr(context, "memory")
@@ -133,11 +132,10 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
         ]
 
         import asyncio
-        for step, message in steps:
+
+        for _step, message in steps:
             logger.info(message)
             if context:
-                # Fix: Replace metaprogramming class with a standardized dict format
-                # that matches what the orchestrator/TUI expects.
                 event_data = {
                     "type": "thinking",
                     "agent": self.ROLE,
@@ -145,9 +143,6 @@ You generate complete, working Terraform HCL and CI/CD pipeline configs.
                     "level": "info",
                 }
                 await context.emit_event(event_data)
-                await context.emit_event(
-                    type("E", (), {"to_dict": lambda s, msg=message: {"type": "thinking", "agent": self.ROLE, "message": msg, "level": "info"}})()
-                )
             await asyncio.sleep(0.5)
 
         return {

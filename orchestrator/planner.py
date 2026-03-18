@@ -7,7 +7,7 @@ event broadcasting, and the self-critique feedback loop.
 import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 import uuid
 
 import structlog
@@ -127,8 +127,9 @@ class OrchestratorEngine:
         Returns a project_id that can be used to poll status.
         """
         project_id = str(uuid.uuid4())
+        idea_prefix: str = cast(str, business_idea)
         logger.info(
-            "Starting new project", project_id=project_id, idea=business_idea[:80]
+            "Starting new project", project_id=project_id, idea=idea_prefix[0:80]
         )
 
         # Initialize shared memory systems
@@ -144,12 +145,14 @@ class OrchestratorEngine:
                     agent_role=AgentRole.FINANCE,
                     message=f"CRITICAL: Budget Exceeded! ${total:.2f} spent against ${budget:.2f} limit.",
                     level="error",
-                    data={"total": total, "budget": budget}
+                    data={"total": total, "budget": budget},
                 )
             )
-        
-        cost_ledger.on_budget_exceeded = lambda t, b: asyncio.create_task(budget_callback(t, b))
-        
+
+        cost_ledger.on_budget_exceeded = lambda t, b: asyncio.create_task(
+            budget_callback(t, b)
+        )
+
         artifacts = ArtifactsStore(project_id=project_id, output_dir=self.output_dir)
 
         memory.project_config = {
@@ -172,18 +175,21 @@ class OrchestratorEngine:
             "kafka_dispatcher": None,
         }
 
+        short_idea: str = cast(str, business_idea)
         await self._emit(
             ExecutionEvent(
                 event_type="system",
                 agent_role=AgentRole.ORCHESTRATOR,
-                message=f"Project started: {business_idea[:60]}",
+                message=f"Project started: {short_idea[0:60]}",
                 data={"project_id": project_id},
                 level="success",
             )
         )
 
         # Run in background
-        _bg_task = asyncio.create_task(self._run_project_lifecycle(project_id))  # noqa: RUF006
+        _bg_task = asyncio.create_task(  # noqa: RUF006
+            self._run_project_lifecycle(project_id)
+        )
         return project_id
 
     # -- Main Lifecycle --------------------------------------------─
@@ -220,10 +226,15 @@ class OrchestratorEngine:
                     )
                     memory.business_plan = business_plan
                 except Exception as e:
-                    logger.warning("LLM Strategy generation failed, using safety fallback model", error=str(e))
-                    memory.business_plan = self._generate_fallback_business_plan(
+                    # Professional fallback in case LLM is unavailable
+                    logger.warning(
+                        "LLM Strategy generation failed, using safety fallback model",
+                        error=str(e),
+                    )
+                    business_plan = self._generate_fallback_business_plan(
                         memory.project_config["business_idea"]
                     )
+                    memory.business_plan = business_plan
 
             await self._emit(
                 ExecutionEvent(
@@ -239,7 +250,9 @@ class OrchestratorEngine:
             ctx["status"] = "architecture"
             await self._emit(
                 ExecutionEvent(
-                    "phase_change", AgentRole.CTO, "CTO designing system architecture..."
+                    "phase_change",
+                    AgentRole.CTO,
+                    "CTO designing system architecture...",
                 )
             )
             cto_agent = self._agent_registry.get(AgentRole.CTO)
@@ -261,7 +274,10 @@ class OrchestratorEngine:
                     )
                     memory.architecture = architecture
                 except Exception as e:
-                    logger.warning("Architecture generation failed, using safety baseline", error=str(e))
+                    logger.warning(
+                        "Architecture generation failed, using safety baseline",
+                        error=str(e),
+                    )
                     memory.architecture = self._generate_fallback_architecture()
             else:
                 logger.warning("Architecture agent missing, using safety baseline")
@@ -421,8 +437,15 @@ class OrchestratorEngine:
                     try:
                         output = await agent.execute_task(task=task, context=exec_ctx)
                     except Exception as e:
-                        if "UnrecognizedClientException" in str(e) or "invalid API key" in str(e).lower():
-                            logger.warning("Primary LLM failed, generating safety baseline output", agent=task.agent_role, task=task.name)
+                        if (
+                            "UnrecognizedClientException" in str(e)
+                            or "invalid API key" in str(e).lower()
+                        ):
+                            logger.warning(
+                                "Primary LLM failed, generating safety baseline output",
+                                agent=task.agent_role,
+                                task=task.name,
+                            )
                             output = self._generate_fallback_task_output(task)
                         else:
                             raise e
@@ -479,11 +502,17 @@ class OrchestratorEngine:
                     await asyncio.sleep(2**task.retry_count)  # Exponential backoff
                 else:
                     task.mark_failed(str(e))
+                    error_msg: str = cast(str, str(e))
                     await self._emit(
                         ExecutionEvent(
                             "task_failed",
                             task.agent_role,
                             f"[{task.agent_role}] Failed: {task.name} - {str(e)[:100]}",
+                            data={
+                                "error_summary": error_msg[:100],
+                                "exception": str(e)[:100],
+                                "task": task.name,
+                            },
                             level="error",
                         )
                     )
@@ -513,13 +542,28 @@ class OrchestratorEngine:
                     if agent and hasattr(agent, "self_critique"):
                         try:
                             # Safely attempt self_critique reflection
-                            critique_result = await agent.self_critique(task.output_data)
+                            critique_result = await agent.self_critique(
+                                task.output_data
+                            )
 
                             reflection_summary = {
                                 "task": task.name,
                                 "agent": task.agent_role,
-                                "approved": critique_result.get("_critique", {}).get("approved", True),
-                                "score": sum(critique_result.get("_critique", {}).get("scores", {}).values()) / 4 if critique_result.get("_critique", {}).get("scores") else 7.0
+                                "approved": critique_result.get("_critique", {}).get(
+                                    "approved", True
+                                ),
+                                "score": (
+                                    sum(
+                                        critique_result.get("_critique", {})
+                                        .get("scores", {})
+                                        .values()
+                                    )
+                                    / 4
+                                    if critique_result.get("_critique", {}).get(
+                                        "scores"
+                                    )
+                                    else 7.0
+                                ),
                             }
                             reflections.append(reflection_summary)
 
@@ -529,7 +573,11 @@ class OrchestratorEngine:
                                 decision_type="reflection",
                                 description=f"Self-critique on task: {task.name}",
                                 rationale="Continuous improvement loop",
-                                input_context={"task_output": str(task.output_data)[:500]},
+                                input_context={
+                                    "task_output": cast(str, str(task.output_data))[
+                                        :500
+                                    ]
+                                },
                                 output=critique_result,
                                 confidence=0.85,
                                 tags=["reflection", "critique"],
@@ -540,18 +588,22 @@ class OrchestratorEngine:
                                 "Agent failed self-critique",
                                 role=task.agent_role,
                                 task_id=task.id,
-                                error=str(e)
+                                error=str(e),
                             )
 
         # Analyze macro results
         total_cost = cost_ledger.total_spent()
         task_count = len(task_graph.tasks) if task_graph else 0
-        
-        avg_score = sum(r["score"] for r in reflections) / len(reflections) if reflections else 0.0
+
+        avg_score = (
+            sum(r["score"] for r in reflections) / len(reflections)
+            if reflections
+            else 0.0
+        )
         approvals = sum(1 for r in reflections if r["approved"])
 
         critique_msg = f"Evaluation complete: {task_count} tasks analyzed, {critiques_collected} reflections gathered. "
-        critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. "
+        critique_msg += f"Overall Quality Score: {avg_score:.1f}/10. Approvals: {approvals}/{critiques_collected}. "
 
         if total_cost > self.budget_usd:
             critique_msg += f"Budget exceeded (${total_cost:.2f} / ${self.budget_usd:.2f}) - optimization recommended."
@@ -566,17 +618,24 @@ class OrchestratorEngine:
                 AgentRole.ORCHESTRATOR,
                 critique_msg,
                 data={
-                    "total_cost": total_cost,
-                    "budget": self.budget_usd,
-                    "reflections_gathered": critiques_collected,
-                    "average_quality_score": round(avg_score, 2),
-                    "approval_rate": round(approvals / critiques_collected, 2) if critiques_collected else 0,
+                    "total_cost": float(total_cost),
+                    "budget": float(self.budget_usd),
+                    "reflections_gathered": int(critiques_collected),
+                    "average_quality_score": float(f"{avg_score:.2f}"),
+                    "approval_rate": (
+                        float(f"{approvals / max(critiques_collected, 1):.2f}")
+                        if critiques_collected
+                        else 0.0
+                    ),
                     "reflections": reflections,
-                    "task_efficiency": "High" if total_cost < self.budget_usd * 0.8 else "Moderate",
+                    "task_efficiency": (
+                        "High" if total_cost < self.budget_usd * 0.8 else "Moderate"
+                    ),
                 },
                 level=level,
             )
         )
+
     # -- Status API ------------------------------------------------─
     def get_project_status(self, project_id: str) -> dict[str, Any] | None:
         if project_id not in self._active_projects:
@@ -598,12 +657,17 @@ class OrchestratorEngine:
     def _generate_fallback_business_plan(self, idea: str) -> dict[str, Any]:
         """Safety baseline for strategy phase, using the original idea as context."""
         keywords = " ".join([word for word in idea.split() if len(word) > 3])
+        short_kw: str = cast(str, keywords)
         return {
             "vision": f"A scalable platform for: {idea}",
-            "mvp_features": ["Core Authentication", "Basic Storage", f"API Endpoints for {keywords[:30]}..."],
+            "mvp_features": [
+                "Core Authentication",
+                "Basic Storage",
+                f"API Endpoints for {short_kw[0:30]}...",
+            ],
             "milestones": ["Infra Bootstrap", "MVP Implementation", "QA Audit"],
             "risk_assessment": ["Vendor lock-in", "Latency threshold", "Data privacy"],
-            "target_users": f"Users interested in {keywords[:40]}...",
+            "target_users": f"Users interested in {short_kw[0:40]}...",
             "revenue_model": "Usage-based or Freemium",
             "success_metrics": ["99.9% availability", "< 500ms p95"],
         }
@@ -623,25 +687,28 @@ class OrchestratorEngine:
         """Generate high-quality mock output for a failed agent task to keep the demo moving."""
         if "backend" in task.agent_role.lower():
             return {
-                "api_code": "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Safety Baseline API\")\n}",
+                "api_code": 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Safety Baseline API")\n}',
                 "status": "baseline_mock",
-                "files_created": ["main.go", "go.mod"]
+                "files_created": ["main.go", "go.mod"],
             }
         elif "frontend" in task.agent_role.lower():
             return {
                 "ui_components": "<div className='p-8 text-center'><h1>Safety Baseline UI</h1></div>",
                 "status": "baseline_mock",
-                "files_created": ["App.tsx", "index.css"]
+                "files_created": ["App.tsx", "index.css"],
             }
         elif "qa" in task.agent_role.lower():
             return {
                 "test_report": "All baseline tests PASSED",
                 "coverage": "85%",
-                "status": "baseline_mock"
+                "status": "baseline_mock",
             }
         elif "devops" in task.agent_role.lower():
             return {
-                "infra_code": "resource \"aws_instance\" \"baseline\" { ... }",
-                "status": "baseline_mock"
+                "infra_code": 'resource "aws_instance" "baseline" { ... }',
+                "status": "baseline_mock",
             }
-        return {"status": "baseline_mock", "message": f"Fallback output for {task.name}"}
+        return {
+            "status": "baseline_mock",
+            "message": f"Fallback output for {task.name}",
+        }

@@ -6,22 +6,21 @@ Usage: python run_demo.py "Your business idea here"
 """
 
 import asyncio
-import sys
+from datetime import UTC, datetime
 import os
-from datetime import datetime
+import sys
+
 from dotenv import load_dotenv
-
 from google import genai
-
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
 
 console = Console()
 
 
-async def run_full_demo(idea: str):
+async def run_full_demo(idea: str):  # noqa: PLR0915
     """Simulate the full multi-agent pipeline with rich console output."""
 
     console.print(
@@ -36,14 +35,14 @@ async def run_full_demo(idea: str):
     # Import agents
     from agents.ceo_agent import CEOAgent
     from agents.cto_agent import CTOAgent
-    from agents.engineer_agent import EngineerAgent
-    from agents.qa_agent import QAAgent
     from agents.devops_agent import DevOpsAgent
+    from agents.engineer_agent import EngineerAgent
     from agents.finance_agent import FinanceAgent
-    from orchestrator.memory.project_memory import ProjectMemory
-    from orchestrator.memory.decision_log import DecisionLog
-    from orchestrator.memory.cost_ledger import CostLedger
+    from agents.qa_agent import QAAgent
     from orchestrator.memory.artifacts_store import ArtifactsStore
+    from orchestrator.memory.cost_ledger import CostLedger
+    from orchestrator.memory.decision_log import DecisionLog
+    from orchestrator.memory.project_memory import ProjectMemory
 
     # Load environment variables
     load_dotenv()
@@ -61,7 +60,7 @@ async def run_full_demo(idea: str):
             "[yellow bold]⚠️ No valid Gemini API key found. Agents will run in mock mode.[/yellow bold]"
         )
 
-    project_id = f"demo-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    project_id = f"demo-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}"
 
     # Initialize shared memory
     memory = ProjectMemory(project_id=project_id)
