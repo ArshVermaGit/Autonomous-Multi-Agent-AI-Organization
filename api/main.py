@@ -304,12 +304,16 @@ async def rate_limit_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+class BudgetConfig(BaseModel):
+    max_cost_usd: float = Field(200.0, ge=1.0, le=10000.0, description="Maximum budget allowed for the project")
+
+
 # -- Request/Response Models ----------------------------------------
 class StartProjectRequest(BaseModel):
     idea: str = Field(
         ..., min_length=5, max_length=1000, description="The core business idea"
     )
-    budget: dict[str, Any] = Field(default_factory=lambda: {"max_cost_usd": 200.0})
+    budget: BudgetConfig = Field(default_factory=BudgetConfig)
     name: str | None = Field(default="", max_length=100)
     constraints: dict[str, Any] | None = None
 
@@ -354,7 +358,9 @@ async def start_project(
         await manager.broadcast(project_id, event.to_dict())
 
     project_id = await orchestrator.start_project(
-        business_idea=request.idea, user_constraints=request.constraints or {}
+        business_idea=request.idea,
+        user_constraints=request.constraints or {},
+        budget_usd=request.budget.max_cost_usd,
     )
 
     # Subscribe the event broadcaster for this project
@@ -367,7 +373,7 @@ async def start_project(
         "name": request.name or "New Project",
         "description": request.idea,
         "status": "running",
-        "budget_usd": request.budget.get("max_cost_usd", 200.0),
+        "budget_usd": request.budget.max_cost_usd,
         "spent_usd": 0.0,
         "progress_pct": 0,
         "tasks_total": 0,
