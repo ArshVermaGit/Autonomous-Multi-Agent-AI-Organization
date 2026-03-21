@@ -34,7 +34,8 @@ from agents.base_agent import BaseAgent
 from agents.ceo_agent import CEOAgent
 from agents.cto_agent import CTOAgent
 from agents.devops_agent import DevOpsAgent
-from agents.engineer_agent import EngineerAgent
+from agents.backend_agent import BackendAgent
+from agents.frontend_agent import FrontendAgent
 from agents.finance_agent import FinanceAgent
 from agents.model_registry import get_default
 from agents.qa_agent import QAAgent
@@ -200,8 +201,7 @@ async def lifespan(app: FastAPI):
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_BACKEND)
     orchestrator.register_agent(
         AgentRole.ENGINEER_BACKEND,
-        EngineerAgent(
-            mode="backend",
+        BackendAgent(
             llm_client=client,
             model_name=model,
             provider=provider,
@@ -213,8 +213,7 @@ async def lifespan(app: FastAPI):
     client, model, provider, producer = get_agent_config(AgentRole.ENGINEER_FRONTEND)
     orchestrator.register_agent(
         AgentRole.ENGINEER_FRONTEND,
-        EngineerAgent(
-            mode="frontend",
+        FrontendAgent(
             llm_client=client,
             model_name=model,
             provider=provider,

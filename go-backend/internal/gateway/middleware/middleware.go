@@ -125,6 +125,17 @@ func JWTAuth(authSvc *auth.Service) fiber.Handler {
 			})
 		}
 
+		if claims.TokenType != "access" {
+			logger.L().Warn("wrong token type presented to API",
+				zap.String("type", claims.TokenType),
+				zap.String("trace_id", c.Locals("trace_id").(string)),
+			)
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":    "expected access token",
+				"trace_id": c.Locals("trace_id"),
+			})
+		}
+
 		c.Locals("user_id", claims.UserID)
 		c.Locals("tenant_id", claims.TenantID)
 		c.Locals("email", claims.Email)

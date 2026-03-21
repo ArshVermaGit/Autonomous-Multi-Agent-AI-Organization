@@ -124,7 +124,7 @@ func main() {
 	reflection.Register(grpcServer)
 
 	// ── Lease Monitor (background cleanup) ──────────────────────────────
-	monitor := server.NewLeaseMonitor(pgPool, redisClient)
+	monitor := server.NewLeaseMonitor(pgPool, redisClient, producer)
 	go monitor.Start(ctx, 30*time.Second)
 
 	go func() {

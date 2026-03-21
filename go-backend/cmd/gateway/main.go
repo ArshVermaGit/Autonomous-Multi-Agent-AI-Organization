@@ -12,6 +12,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/csrf"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"go.uber.org/zap"
 
@@ -93,23 +94,24 @@ func main() {
 	app.Use(middleware.CORS())
 	app.Use(middleware.RequestLogger())
 
-	// ── Auth middleware — two modes ───────────────────────────────────────────
-	if middleware.LocalMode() {
-		// LOCAL MODE: AUTH_DISABLED=true
-		// No login required. Every request gets a fixed local-user identity injected.
-		// Perfect for self-hosted / personal use — just set API keys in .env.
-		log.Info("⚠️  AUTH_DISABLED=true — running in local mode (no login required)")
-		app.Use(middleware.LocalAuth())
-	} else {
-		// SAAS MODE: Google OAuth + RS256 JWT cookie
-		// Register OAuth endpoints BEFORE JWTAuth so they are accessible without a token.
-		if authSvc != nil && oauthHdlr != nil {
-			app.Get("/auth/google", oauthHdlr.GoogleLogin)
-			app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
-		}
-		if authSvc != nil {
-			app.Use(middleware.JWTAuth(authSvc))
-		}
+	// ── CSRF Protection ──────────────────────────────────────────────────────
+	app.Use(csrf.New(csrf.Config{
+		KeyLookup:      "header:X-Csrf-Token",
+		CookieName:     "csrf_",
+		CookieSameSite: "Strict",
+		CookieHTTPOnly: false, // Must be false so Next.js frontend can read document.cookie
+	}))
+
+	// ── Auth middleware ───────────────────────────────────────────────────────
+	// SAAS MODE: Google OAuth + RS256 JWT cookie
+	// Register OAuth endpoints BEFORE JWTAuth so they are accessible without a token.
+	if authSvc != nil && oauthHdlr != nil {
+		app.Get("/auth/google", oauthHdlr.GoogleLogin)
+		app.Get("/auth/google/callback", oauthHdlr.GoogleCallback)
+		app.Post("/auth/refresh", oauthHdlr.RefreshToken)
+	}
+	if authSvc != nil {
+		app.Use(middleware.JWTAuth(authSvc))
 	}
 
 	v1 := app.Group("/v1")

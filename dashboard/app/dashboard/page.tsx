@@ -272,6 +272,14 @@ export default function DashboardPage() {
                 </div>
             </header>
 
+            {/* Offline Banner */}
+            {(wsStatus === 'disconnected' || wsStatus === 'error' || wsStatus === 'connecting') && activeProject && (
+                <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-1.5 flex items-center justify-center gap-2 text-amber-500 text-xs font-medium w-full z-40 relative">
+                    <Loader2 size={12} className="animate-spin flex-shrink-0" />
+                    <span>{wsStatus === 'connecting' ? 'Connecting to orchestrator...' : 'Connection lost. Trying to reconnect...'}</span>
+                </div>
+            )}
+
             {/* ── Body ───────────────────────────────────────────────── */}
             <div className="flex flex-1 overflow-hidden relative">
 

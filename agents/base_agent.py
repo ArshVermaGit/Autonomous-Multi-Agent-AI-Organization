@@ -13,12 +13,16 @@ import os
 from typing import Any, cast
 
 from google.genai import types
+from opentelemetry import trace
+import redis.asyncio as redis
 import structlog
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
 from messaging.kafka_client import KafkaProducerClient
 from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def _clean_json_response(text: str) -> str:
@@ -78,6 +82,12 @@ class BaseAgent(ABC):
         self._iteration_count = 0
         self._heartbeat_task: asyncio.Task | None = None
         self._current_task_id: str | None = None
+
+        # Redis client for atomic budget gate
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+        self.redis_client = redis.from_url(redis_url, decode_responses=True)
+        self.budget_limit = float(os.getenv("BUDGET_LIMIT_USD", "200.0"))
+
         logger.info(
             "Agent initialized", role=self.ROLE, provider=provider, model=model_name
         )
@@ -176,133 +186,188 @@ class BaseAgent(ABC):
         if self.llm_client is None:
             return self._mock_llm_response(messages)
 
+        # Pre-call budget gate
         try:
-            assert self.llm_client is not None  # guarded above
-            # -- Google Gemini ----------------------------------------------
-            if self.provider == "google":
-                system_prompt = self.system_prompt
-                config = types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=temperature,
-                    max_output_tokens=max_tokens,
+            used_str = await self.redis_client.get("budget:used")
+            used = float(used_str) if used_str else 0.0
+            if used >= self.budget_limit:
+                logger.error(
+                    "Budget gate blocked call", used=used, limit=self.budget_limit
                 )
-                if response_format == "json_object":
-                    config.response_mime_type = "application/json"
-
-                gemini_messages = []
-                for m in messages:
-                    if m["role"] == "system":
-                        continue
-                    role = "model" if m["role"] == "assistant" else "user"
-                    gemini_messages.append(
-                        types.Content(
-                            role=role, parts=[types.Part.from_text(text=m["content"])]
-                        )
-                    )
-
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.llm_client.models.generate_content,  # type: ignore[union-attr]
-                        model=self.model_name,
-                        contents=gemini_messages,
-                        config=config,
-                    ),
-                    timeout=60.0,
+                raise RuntimeError(
+                    f"Budget exceeded! Used: ${used:.2f}, Limit: ${self.budget_limit:.2f}"
                 )
-                return response.text
-
-            # -- OpenAI ----------------------------------------------------
-            elif self.provider == "openai":
-                kwargs = {
-                    "model": self.model_name,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                }
-                if response_format == "json_object":
-                    kwargs["response_format"] = {"type": "json_object"}  # type: ignore[assignment]
-
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.llm_client.chat.completions.create, **kwargs  # type: ignore[union-attr]
-                    ),
-                    timeout=60.0,
-                )
-                return response.choices[0].message.content
-
-            # -- Anthropic Claude ------------------------------------------
-            elif self.provider == "anthropic":
-                # Extract system prompt separately - Anthropic uses it as a top-level param
-                system_content = self.system_prompt
-                if response_format == "json_object":
-                    system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
-
-                anthropic_messages = [
-                    {"role": m["role"], "content": m["content"]}
-                    for m in messages
-                    if m["role"] != "system"
-                ]
-
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.llm_client.messages.create,  # type: ignore[union-attr]
-                        model=self.model_name,
-                        max_tokens=max_tokens,
-                        system=system_content,
-                        messages=anthropic_messages,
-                    ),
-                    timeout=60.0,
-                )
-                text = response.content[0].text
-                if response_format == "json_object":
-                    text = _clean_json_response(text)
-                return text
-
-            # -- Amazon Bedrock (Nova) --------------------------------------------------
-            elif self.provider == "bedrock":
-                # Nova models use the Bedrock Converse API format
-                system_content = self.system_prompt
-                if response_format == "json_object":
-                    system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
-
-                bedrock_messages = [
-                    {"role": m["role"], "content": [{"text": m["content"]}]}
-                    for m in messages
-                    if m["role"] != "system"
-                ]
-
-                kwargs = {
-                    "modelId": self.model_name,
-                    "messages": bedrock_messages,
-                    "system": [{"text": system_content}],
-                    "inferenceConfig": {
-                        "temperature": temperature,
-                        "maxTokens": max_tokens,
-                    },
-                }
-
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        self.llm_client.converse, **kwargs  # type: ignore[union-attr]
-                    ),
-                    timeout=60.0,
-                )
-                text = response["output"]["message"]["content"][0]["text"]
-                if response_format == "json_object":
-                    text = _clean_json_response(text)
-                return text
-
-            else:
-                logger.warning(
-                    "Unknown provider, falling back to mock", provider=self.provider
-                )
-                return self._mock_llm_response(messages)
-
-        except Exception as e:
-            logger.error(
-                "LLM call failed", error=str(e), agent=self.ROLE, provider=self.provider
+        except redis.ConnectionError as e:
+            logger.warning(
+                "Redis connection error, bypassing budget gate", error=str(e)
             )
-            raise
+
+        text = await self._execute_provider(
+            messages, temperature, max_tokens, response_format
+        )
+
+        # Post-call simplistic cost tracking (rough estimate)
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            # Assumes roughly $0.005 per turn as a flat generic estimate since we don't have token counts easily here
+            await self.redis_client.incrbyfloat("budget:used", 0.005)
+
+        return text
+
+    @retry(
+        wait=wait_exponential_jitter(initial=1, max=10),
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
+    async def _execute_provider(
+        self,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        response_format: str | None,
+    ) -> str:
+        with tracer.start_as_current_span(
+            "llm.generate",
+            attributes={
+                "llm.provider": self.provider,
+                "llm.model": self.model_name,
+                "llm.temperature": temperature,
+            },
+        ):
+            try:
+                assert self.llm_client is not None  # guarded above
+                # -- Google Gemini ----------------------------------------------
+                if self.provider == "google":
+                    system_prompt = self.system_prompt
+                    config = types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=temperature,
+                        max_output_tokens=max_tokens,
+                    )
+                    if response_format == "json_object":
+                        config.response_mime_type = "application/json"
+
+                    gemini_messages = []
+                    for m in messages:
+                        if m["role"] == "system":
+                            continue
+                        role = "model" if m["role"] == "assistant" else "user"
+                        gemini_messages.append(
+                            types.Content(
+                                role=role,
+                                parts=[types.Part.from_text(text=m["content"])],
+                            )
+                        )
+
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self.llm_client.models.generate_content,  # type: ignore[union-attr]
+                            model=self.model_name,
+                            contents=gemini_messages,
+                            config=config,
+                        ),
+                        timeout=60.0,
+                    )
+                    return response.text
+
+                # -- OpenAI ----------------------------------------------------
+                elif self.provider == "openai":
+                    kwargs = {
+                        "model": self.model_name,
+                        "messages": messages,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    }
+                    if response_format == "json_object":
+                        kwargs["response_format"] = {"type": "json_object"}  # type: ignore[assignment]
+
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self.llm_client.chat.completions.create,
+                            **kwargs,  # type: ignore[union-attr]
+                        ),
+                        timeout=60.0,
+                    )
+                    return response.choices[0].message.content
+
+                # -- Anthropic Claude ------------------------------------------
+                elif self.provider == "anthropic":
+                    # Extract system prompt separately - Anthropic uses it as a top-level param
+                    system_content = self.system_prompt
+                    if response_format == "json_object":
+                        system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
+
+                    anthropic_messages = [
+                        {"role": m["role"], "content": m["content"]}
+                        for m in messages
+                        if m["role"] != "system"
+                    ]
+
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self.llm_client.messages.create,  # type: ignore[union-attr]
+                            model=self.model_name,
+                            max_tokens=max_tokens,
+                            system=system_content,
+                            messages=anthropic_messages,
+                        ),
+                        timeout=60.0,
+                    )
+                    text = response.content[0].text
+                    if response_format == "json_object":
+                        text = _clean_json_response(text)
+                    return text
+
+                # -- Amazon Bedrock (Nova) --------------------------------------------------
+                elif self.provider == "bedrock":
+                    # Nova models use the Bedrock Converse API format
+                    system_content = self.system_prompt
+                    if response_format == "json_object":
+                        system_content += "\n\nIMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like ```json or any other conversational text."
+
+                    bedrock_messages = [
+                        {"role": m["role"], "content": [{"text": m["content"]}]}
+                        for m in messages
+                        if m["role"] != "system"
+                    ]
+
+                    kwargs = {
+                        "modelId": self.model_name,
+                        "messages": bedrock_messages,
+                        "system": [{"text": system_content}],
+                        "inferenceConfig": {
+                            "temperature": temperature,
+                            "maxTokens": max_tokens,
+                        },
+                    }
+
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self.llm_client.converse,
+                            **kwargs,  # type: ignore[union-attr]
+                        ),
+                        timeout=60.0,
+                    )
+                    text = response["output"]["message"]["content"][0]["text"]
+                    if response_format == "json_object":
+                        text = _clean_json_response(text)
+                    return text
+
+                else:
+                    logger.warning(
+                        "Unknown provider, falling back to mock", provider=self.provider
+                    )
+                    return self._mock_llm_response(messages)
+
+            except Exception as e:
+                logger.error(
+                    "LLM call failed",
+                    error=str(e),
+                    agent=self.ROLE,
+                    provider=self.provider,
+                )
+                raise
 
     def _mock_llm_response(self, messages: list[dict[str, str]]) -> str:
         """Deterministic mock response for demo mode."""

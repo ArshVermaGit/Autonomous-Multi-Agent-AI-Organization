@@ -51,6 +51,8 @@ ruff>=0.3.0
 # ── Observability ───────────────────────────────────────────────
 structlog>=24.1.0
 prometheus-client>=0.20.0
+opentelemetry-api>=1.23.0
+opentelemetry-sdk>=1.23.0
 
 # ── Task Graph & DAG ────────────────────────────────────────────
 networkx>=3.2.0
@@ -68,3 +70,4 @@ PyYAML>=6.0.1
 requests>=2.31.0
 filelock>=3.13.0
 textual>=0.52.0
+testcontainers[kafka]

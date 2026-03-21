@@ -64,7 +64,8 @@ type KafkaConfig struct {
 type AuthConfig struct {
 	JWTPrivateKeyPath  string        `mapstructure:"jwt_private_key_path"`
 	JWTPublicKeyPath   string        `mapstructure:"jwt_public_key_path"`
-	JWTExpiry          time.Duration `mapstructure:"jwt_expiry"`
+	JWTAccessExpiry    time.Duration `mapstructure:"jwt_access_expiry"`
+	JWTRefreshExpiry   time.Duration `mapstructure:"jwt_refresh_expiry"`
 	GoogleClientID     string        `mapstructure:"google_client_id"`
 	GoogleClientSecret string        `mapstructure:"google_client_secret"`
 	GoogleRedirectURL  string        `mapstructure:"google_redirect_url"`
@@ -117,7 +118,8 @@ func Load(serviceName string) (*Config, error) {
 	v.SetDefault("kafka.topic_events", "ai-org-events")
 	v.SetDefault("kafka.topic_heartbeats", "ai-org-heartbeats")
 
-	v.SetDefault("auth.jwt_expiry", "24h")
+	v.SetDefault("auth.jwt_access_expiry", "15m")
+	v.SetDefault("auth.jwt_refresh_expiry", "168h")
 	v.SetDefault("observability.trace_sample_rate", 0.1)
 	v.SetDefault("observability.log_level", "info")
 	v.SetDefault("observability.log_json", false)

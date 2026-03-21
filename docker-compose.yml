@@ -278,7 +278,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: CEO
-      KAFKA_CONSUMER_GROUP: ceo-agent-group
       PROMETHEUS_PORT: "9091"
     ports:
       - "9091:9091"
@@ -288,7 +287,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: CTO
-      KAFKA_CONSUMER_GROUP: cto-agent-group
       PROMETHEUS_PORT: "9092"
     ports:
       - "9192:9092"
@@ -298,7 +296,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: Engineer_Backend
-      KAFKA_CONSUMER_GROUP: engineer-backend-group
       PROMETHEUS_PORT: "9093"
     ports:
       - "9093:9093"
@@ -308,7 +305,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: Engineer_Frontend
-      KAFKA_CONSUMER_GROUP: engineer-frontend-group
       PROMETHEUS_PORT: "9094"
     ports:
       - "9094:9094"
@@ -318,7 +314,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: QA
-      KAFKA_CONSUMER_GROUP: qa-agent-group
       PROMETHEUS_PORT: "9095"
     ports:
       - "9095:9095"
@@ -328,7 +323,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: DevOps
-      KAFKA_CONSUMER_GROUP: devops-agent-group
       PROMETHEUS_PORT: "9096"
     ports:
       - "9096:9096"
@@ -338,7 +332,6 @@ services:
     environment:
       <<: *agent-env
       AGENT_ROLE: Finance
-      KAFKA_CONSUMER_GROUP: finance-agent-group
       PROMETHEUS_PORT: "9097"
     ports:
       - "9097:9097"

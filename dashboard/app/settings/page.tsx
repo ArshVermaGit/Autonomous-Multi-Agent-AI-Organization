@@ -55,11 +55,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+function getCsrfToken() {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(new RegExp('(^| )csrf_=([^;]+)'));
+    return match ? match[2] : '';
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+    const headers = new Headers(options?.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    const token = getCsrfToken();
+    if (token) headers.set('X-Csrf-Token', token);
+
     const res = await fetch(`${API_BASE}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         ...options,
+        headers,
+        credentials: 'include',
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();

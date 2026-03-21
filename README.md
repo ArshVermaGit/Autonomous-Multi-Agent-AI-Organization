@@ -18,6 +18,13 @@
 >
 - **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
 - **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
+### Real-World Container Restrictions
+
+> **Note on "Agent Sandboxing"**: To ensure safety in production environments, the executed workspace is heavily restricted via standard container controls:
+>
+> 1. **No direct host mounting**: The agents run inside isolated Docker containers without host mount privileges (except designated safe output folders).
+> 2. **Network limitations**: Egress rules deny access to the internal `ai-org-net` infrastructure apart from allowed proxy addresses.
+> 3. **Non-root Execution**: Python execution containers drop privileges via `USER 1001:1001` or use restricted orchestration runners. Any "sandboxing" claims made by agents are strictly bounded by Docker namespace and cgroup limitations, rather than hypervisor isolation. **Do not run untrusted code payloads without deploying firecracker VMs or gVisor (`runtime: runsc`).**
 - **Production-Grade Shielding**: kernel-level sandboxing (gVisor), secure in-memory secret injection (tmpfs), and automated PII/Key redaction in logs.
 - **Self-Healing Connectivity**: Background health orchestrator ensures 100% dependency availability before task execution.
 - **Self-Critique Quality Loop**: Automated agent-level reflection and quality scoring for every task output.

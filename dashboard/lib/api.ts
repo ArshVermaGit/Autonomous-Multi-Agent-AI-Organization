@@ -54,15 +54,43 @@ export interface TaskNode {
 
 // ── Fetch helper ─────────────────────────────────────────────────────
 
+function getCsrfToken() {
+    if (typeof document === 'undefined') return '';
+    const match = document.cookie.match(new RegExp('(^| )csrf_=([^;]+)'));
+    return match ? match[2] : '';
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-    const res = await fetch(`${API_BASE}${path}`, {
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(options?.headers as Record<string, string>),
-        },
+    const headers = new Headers(options?.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+    const token = getCsrfToken();
+    if (token) headers.set('X-Csrf-Token', token);
+
+    let res = await fetch(`${API_BASE}${path}`, {
         ...options,
+        headers,
+        credentials: 'include',
     })
+
+    if (res.status === 401 && !path.includes('/auth/refresh')) {
+        try {
+            const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include',
+            })
+            if (refreshRes.ok) {
+                // Retry original request
+                res = await fetch(`${API_BASE}${path}`, {
+                    ...options,
+                    headers,
+                    credentials: 'include',
+                })
+            }
+        } catch (e) {
+            console.error('Optional token refresh failed', e)
+        }
+    }
 
     if (!res.ok) {
         let errorMessage = `API Error (${res.status})`
@@ -71,7 +99,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
             errorMessage = errorBody.error || errorBody.message || errorMessage
         } catch {
             const text = await res.text()
-            errorMessage = text || errorMessage
+            if (text) errorMessage = text
         }
         throw new Error(errorMessage)
     }

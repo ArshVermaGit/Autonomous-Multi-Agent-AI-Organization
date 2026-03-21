@@ -41,23 +41,19 @@ Output complete, runnable TypeScript/TSX files. No pseudo-code, no omissions.
 """
 
 
-class EngineerAgent(BaseAgent):
+class FrontendAgent(BaseAgent):
     """
-    Engineer Agent for code generation.
-    Mode: 'backend' or 'frontend'.
+    Frontend Engineer Agent for code generation.
     Includes self-fix loop (lint → fix → commit).
     """
 
-    def __init__(self, mode: str = "backend", **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.mode = mode
-        self.ROLE = f"Engineer_{mode.capitalize()}"
+        self.ROLE = "Engineer_Frontend"
 
     @property
     def system_prompt(self) -> str:
-        return (
-            BACKEND_SYSTEM_PROMPT if self.mode == "backend" else FRONTEND_SYSTEM_PROMPT
-        )
+        return FRONTEND_SYSTEM_PROMPT
 
     async def run(
         self,
@@ -67,12 +63,7 @@ class EngineerAgent(BaseAgent):
         **kwargs,
     ) -> dict[str, Any]:
         arch = context.memory.architecture if context else (architecture or {})
-        files = {}
-
-        if self.mode == "backend":
-            files = await self._generate_backend(arch, context)
-        else:
-            files = await self._generate_frontend(arch, context)
+        files = await self._generate_frontend(arch, context)
 
         # Save all files to artifacts
         if context:
