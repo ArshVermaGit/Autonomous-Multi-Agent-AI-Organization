@@ -77,6 +77,7 @@ func main() {
 	hdlr := handler.NewHandler(orchClient, pgPool)
 	settingsHdlr := handler.NewSettingsHandler(pgPool)
 	tasksHdlr := handler.NewTasksHandler(pgPool)
+	interventionsHdlr := handler.NewInterventionsHandler(redisClient)
 	var oauthHdlr *handler.OAuthHandler
 	if authSvc != nil {
 		oauthHdlr = handler.NewOAuthHandler(authSvc, pgPool)
@@ -123,6 +124,7 @@ func main() {
 	projects.Get("/:id/cost", hdlr.GetCostReport)
 	projects.Get("/:id/tasks", tasksHdlr.GetProjectTasks)
 	projects.Get("/:id/events", tasksHdlr.GetProjectEvents)
+	projects.Post("/:id/tasks/:task_id/intervene", interventionsHdlr.PostIntervention)
 
 	// Settings — LLM key management + agent model prefs
 	settings := v1.Group("/settings")
