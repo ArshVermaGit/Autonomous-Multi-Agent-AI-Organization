@@ -11,24 +11,16 @@
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
 > A production-grade, event-driven system built for the **Amazon Nova AI Hackathon** (March 2026) where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered exclusively by **Amazon Nova** foundation models and **Nova Act** browser automation.
+> **Core Enterprise Infrastructure Features:**
 >
-> **Core Intelligence Features:**
->
-> - **Native Amazon Nova Integration**: Specialized agents optimized for Nova Pro, Lite, and Micro models.
->
-- **Proximus-Nova CLI**: Unified launcher for instant setup, management, and real-time monitoring.
-- **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and agent feedback.
-### Real-World Container Restrictions
-
-> **Note on "Agent Sandboxing"**: To ensure safety in production environments, the executed workspace is heavily restricted via standard container controls:
->
-> 1. **No direct host mounting**: The agents run inside isolated Docker containers without host mount privileges (except designated safe output folders).
-> 2. **Network limitations**: Egress rules deny access to the internal `ai-org-net` infrastructure apart from allowed proxy addresses.
-> 3. **Non-root Execution**: Python execution containers drop privileges via `USER 1001:1001` or use restricted orchestration runners. Any "sandboxing" claims made by agents are strictly bounded by Docker namespace and cgroup limitations, rather than hypervisor isolation. **Do not run untrusted code payloads without deploying firecracker VMs or gVisor (`runtime: runsc`).**
-- **Production-Grade Shielding**: kernel-level sandboxing (gVisor), secure in-memory secret injection (tmpfs), and automated PII/Key redaction in logs.
-- **Self-Healing Connectivity**: Background health orchestrator ensures 100% dependency availability before task execution.
-- **Self-Critique Quality Loop**: Automated agent-level reflection and quality scoring for every task output.
-- **Atomic State Recovery**: Git-based checkpointing with sync barriers for lossless state rewind.
+- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** (Go, Python, Rust) and deep LLM reasoning visibility with **LangSmith**.
+- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation** for AI-generated code.
+- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic cross-service agent state transitions.
+- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing** (MoE).
+- **Real-Time UX**: Live multi-agent task streaming via **WebSockets** and interactive **React Flow** DAG visualization.
+- **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and system health monitoring.
+- **Proximus-Nova CLI**: Unified launcher for instant setup, orchestration, and real-time observability.
+.
 
 ---
 
@@ -134,7 +126,10 @@ The fastest way to run Proximus-Nova is using the unified **CLI Launcher**.
 ### Prerequisites
 
 - **Docker + Docker Compose**
+- **gVisor (runsc)** — Optional, for hardened agent sandboxing.
 - **AWS Bedrock Access** (or fallback keys for OpenAI/Anthropic)
+- **Qdrant** — For semantic caching.
+- **OpenTelemetry Collector** — For distributed tracing.
 
 ### 1-Minute Setup
 
@@ -408,8 +403,10 @@ The system is now hardened for production environments:
 - **RS256 JWT** — Asymmetric signing. Private key never leaves the server.
 - **CSRF protection** — OAuth state token validated via HttpOnly cookie.
 - **HttpOnly JWT cookie** — Immune to XSS token theft.
-- **Agent sandboxing** — Code execution runs in isolated Docker containers with `--network=none`.
+- **Agent sandboxing** — Support for **gVisor (`runsc`)** for kernel-isolated code execution.
 - **Least privilege** — CEO cannot write code; Engineer cannot modify billing.
+- **PII Scrubbing** — High-performance Rust-based redaction of logs and agent outputs.
+- **AST Validation** — Real-time security analysis of AI-generated Python scripts.
 
 ## Commit Message Format
 
