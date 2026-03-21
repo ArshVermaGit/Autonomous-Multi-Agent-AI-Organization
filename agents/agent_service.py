@@ -233,11 +233,15 @@ class AgentMicroservice:
             import contextlib
 
             with contextlib.suppress(Exception):
-                request_line = await asyncio.wait_for(reader.readuntil(b'\r\n'), timeout=1.0)
-                if b'GET /health' in request_line:
+                request_line = await asyncio.wait_for(
+                    reader.readuntil(b"\r\n"), timeout=1.0
+                )
+                if b"GET /health" in request_line:
                     response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
                 else:
-                    response = b"HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found"
+                    response = (
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\n\r\nNot Found"
+                    )
                 writer.write(response)
                 await writer.drain()
             writer.close()
@@ -477,7 +481,9 @@ class AgentMicroservice:
                     "trace_id": task_msg.trace_id,
                     "original_payload": task_msg.model_dump(),
                 }
-                await self.producer.publish_json("ai-org-dlq", dlq_payload, key=task_msg.task_id)
+                await self.producer.publish_json(
+                    "ai-org-dlq", dlq_payload, key=task_msg.task_id
+                )
             else:
                 result_topic = KafkaTopics.results_topic(task_msg.project_id)
                 await self.producer.publish_model(

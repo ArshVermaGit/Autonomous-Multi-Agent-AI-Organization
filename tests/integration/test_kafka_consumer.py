@@ -16,19 +16,25 @@ def kafka_container():
     with KafkaContainer(image="confluentinc/cp-kafka:7.4.0") as kafka:
         yield kafka
 
+
 @pytest.fixture
 def kafka_env(kafka_container, monkeypatch):
     bootstrap_server = kafka_container.get_bootstrap_server()
     monkeypatch.setenv("KAFKA_BOOTSTRAP_SERVERS", bootstrap_server)
     monkeypatch.setenv("AGENT_ROLE", AgentRole.CTO)
-    monkeypatch.setenv("KAFKA_TEST_MODE", "true") # Prevent some prod behaviors if needed
+    monkeypatch.setenv(
+        "KAFKA_TEST_MODE", "true"
+    )  # Prevent some prod behaviors if needed
     return bootstrap_server
+
 
 @pytest.mark.asyncio
 async def test_agent_microservice_consumer_loop(kafka_env, monkeypatch):
     # Setup mock agent so we don't call real LLMs
     mock_agent = AsyncMock()
-    mock_agent.execute_task = AsyncMock(return_value={"_cost_usd": 0.05, "result": "architecture is good"})
+    mock_agent.execute_task = AsyncMock(
+        return_value={"_cost_usd": 0.05, "result": "architecture is good"}
+    )
 
     # Mock _load_agent so it returns our mocked agent
     with patch("agents.agent_service._load_agent", return_value=mock_agent):
@@ -36,7 +42,9 @@ async def test_agent_microservice_consumer_loop(kafka_env, monkeypatch):
         service = AgentMicroservice()
         service.agent = mock_agent
         service.producer = KafkaProducerClient()
-        service.consumer = KafkaConsumerClient(topics=[service.topic], group_id=service.group_id)
+        service.consumer = KafkaConsumerClient(
+            topics=[service.topic], group_id=service.group_id
+        )
 
         # Run consume loop in background
         loop_task = asyncio.create_task(service._consume_loop())
@@ -60,7 +68,9 @@ async def test_agent_microservice_consumer_loop(kafka_env, monkeypatch):
 
         # Read from the output topic (results topic)
         result_topic = KafkaTopics.results_topic(task_msg.project_id)
-        result_consumer = KafkaConsumerClient(topics=[result_topic], group_id="test-result-group")
+        result_consumer = KafkaConsumerClient(
+            topics=[result_topic], group_id="test-result-group"
+        )
 
         async def fetch_result():
             async for data in result_consumer.consume_stream():

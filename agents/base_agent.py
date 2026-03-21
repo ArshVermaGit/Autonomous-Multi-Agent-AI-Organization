@@ -29,6 +29,7 @@ from tools.collaboration_tool import CollaborationTool
 
 logger = structlog.get_logger(__name__)
 
+
 # -- OpenTelemetry Initialization ----------------------------------
 def setup_otel(service_name: str):
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4317")
@@ -37,6 +38,7 @@ def setup_otel(service_name: str):
     processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=True))
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
+
 
 if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
     setup_otel("agent_service")
@@ -164,8 +166,8 @@ class BaseAgent(ABC):
                 "agent.role": self.ROLE,
                 "task.id": task.id,
                 "task.name": task.name,
-                "project.id": self._current_project_id
-            }
+                "project.id": self._current_project_id,
+            },
         ):
             try:
                 return await self.run(task=task, context=context)
@@ -177,7 +179,9 @@ class BaseAgent(ABC):
                 self._current_task_id = None
                 self._current_project_id = None
 
-    async def suspend_for_approval(self, action_type: str, cost_estimate: float = 0.0, details: str = ""):
+    async def suspend_for_approval(
+        self, action_type: str, cost_estimate: float = 0.0, details: str = ""
+    ):
         """Suspend execution and wait for human approval via Redis PubSub."""
         if not self._current_task_id or not self.kafka_producer:
             logger.warning("Missing task_id or kafka producer, skipping approval wait.")
@@ -191,7 +195,9 @@ class BaseAgent(ABC):
             "agent_role": self.ROLE,
             "project_id": getattr(self, "_current_project_id", "demo"),
             "task_id": self._current_task_id,
-            "message": self._scrub_text(f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}"),
+            "message": self._scrub_text(
+                f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}"
+            ),
             "data": {
                 "intervention_id": intervention_id,
                 "project_id": getattr(self, "_current_project_id", "demo"),
@@ -200,13 +206,13 @@ class BaseAgent(ABC):
                 "action_type": action_type,
                 "cost_estimate": cost_estimate,
                 "details": details,
-                "status": "pending_approval"
-            }
+                "status": "pending_approval",
+            },
         }
         await self.kafka_producer.publish_json(
             os.getenv("KAFKA_TOPIC_EVENTS", "ai-org-events"),
             payload,
-            key=self._current_task_id
+            key=self._current_task_id,
         )
 
         # Wait on Redis PubSub
@@ -218,10 +224,15 @@ class BaseAgent(ABC):
                 if message["type"] == "message":
                     data = json.loads(message["data"])
                     if data.get("approved") is True:
-                        logger.info("Execution approved by human", intervention_id=intervention_id)
+                        logger.info(
+                            "Execution approved by human",
+                            intervention_id=intervention_id,
+                        )
                         return True
                     else:
-                        raise RuntimeError(f"Execution visually DENIED by human for {action_type}")
+                        raise RuntimeError(
+                            f"Execution visually DENIED by human for {action_type}"
+                        )
         finally:
             await pubsub.unsubscribe(intervention_id)
             await pubsub.close()
@@ -269,7 +280,7 @@ class BaseAgent(ABC):
                 bin_path,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             stdout, _ = await proc.communicate(json.dumps(req).encode())
             if proc.returncode == 0:
@@ -291,7 +302,7 @@ class BaseAgent(ABC):
                 bin_path,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             stdout, _ = await proc.communicate(json.dumps(req).encode())
             if proc.returncode == 0:
@@ -547,10 +558,7 @@ class BaseAgent(ABC):
 
         with tracer.start_as_current_span(
             "agent.use_tool",
-            attributes={
-                "tool.name": tool_name,
-                "agent.role": self.ROLE
-            }
+            attributes={"tool.name": tool_name, "agent.role": self.ROLE},
         ):
             try:
                 if asyncio.iscoroutinefunction(tool_fn):
@@ -560,7 +568,9 @@ class BaseAgent(ABC):
                 logger.info("Tool succeeded", agent=self.ROLE, tool=tool_name)
                 return result
             except Exception as e:
-                logger.error("Tool failed", agent=self.ROLE, tool=tool_name, error=str(e))
+                logger.error(
+                    "Tool failed", agent=self.ROLE, tool=tool_name, error=str(e)
+                )
                 raise
 
     # -- Memory Access ----------------------------------------------

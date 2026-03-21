@@ -305,7 +305,9 @@ async def rate_limit_middleware(request: Request, call_next):
 
 
 class BudgetConfig(BaseModel):
-    max_cost_usd: float = Field(200.0, ge=1.0, le=10000.0, description="Maximum budget allowed for the project")
+    max_cost_usd: float = Field(
+        200.0, ge=1.0, le=10000.0, description="Maximum budget allowed for the project"
+    )
 
 
 # -- Request/Response Models ----------------------------------------
