@@ -7,6 +7,7 @@ import AgentFeed from '@/components/AgentFeed'
 import DagViewer from '@/components/DagViewer'
 import CostMeter from '@/components/CostMeter'
 import MetricsPanel from '@/components/MetricsPanel'
+import InterventionModal, { InterventionData } from '@/components/InterventionModal'
 import {
     Plus, RefreshCw, Cpu, ChevronRight,
     CheckCircle2, Clock, AlertCircle, Loader2,
@@ -175,6 +176,7 @@ export default function DashboardPage() {
     const [tasks, setTasks] = useState<TaskNode[]>([])
     const [selectedProject, setSelectedProject] = useState<Project | null>(null)
     const [showModal, setShowModal] = useState(false)
+    const [interventionData, setInterventionData] = useState<InterventionData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [apiOnline, setApiOnline] = useState(false)
 
@@ -373,11 +375,18 @@ export default function DashboardPage() {
                 </main>
             </div>
 
-            {/* Modal */}
+            {/* Modals */}
             {showModal && (
                 <NewProjectModal
                     onClose={() => setShowModal(false)}
                     onCreate={handleCreate}
+                />
+            )}
+            
+            {interventionData && (
+                <InterventionModal
+                    data={interventionData}
+                    onClose={() => setInterventionData(null)}
                 />
             )}
         </div>

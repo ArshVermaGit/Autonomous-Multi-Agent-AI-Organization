@@ -130,6 +130,7 @@ class BaseAgent(ABC):
         logger.info("Executing task", agent=self.ROLE, task=task.name, task_id=task.id)
         self._current_task_id = task.id
         self._current_task_version = getattr(task, "version", 1)
+        self._current_project_id = getattr(task, "project_id", "demo")
 
         # Start background heartbeat
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -142,6 +143,55 @@ class BaseAgent(ABC):
                 self._heartbeat_task.cancel()
                 self._heartbeat_task = None
             self._current_task_id = None
+            self._current_project_id = None
+
+    async def suspend_for_approval(self, action_type: str, cost_estimate: float = 0.0, details: str = ""):
+        """Suspend execution and wait for human approval via Redis PubSub."""
+        if not self._current_task_id or not self.kafka_producer:
+            logger.warning("Missing task_id or kafka producer, skipping approval wait.")
+            return
+
+        intervention_id = f"intervention:{self._current_task_id}"
+        
+        # Publish event for dashboard
+        payload = {
+            "type": "phase_change",
+            "agent_role": self.ROLE,
+            "project_id": getattr(self, "_current_project_id", "demo"),
+            "task_id": self._current_task_id,
+            "message": f"Suspended for human authorization. Action: {action_type}. Estimated cost: ${cost_estimate}",
+            "data": {
+                "intervention_id": intervention_id,
+                "action_type": action_type,
+                "cost_estimate": cost_estimate,
+                "details": details,
+                "status": "pending_approval"
+            }
+        }
+        await self.kafka_producer.publish_json(
+            os.getenv("KAFKA_TOPIC_EVENTS", "ai-org-events"),
+            payload,
+            key=self._current_task_id
+        )
+
+        logger.info("Suspending execution for approval", intervention_id=intervention_id)
+        
+        # Wait on Redis PubSub
+        pubsub = self.redis_client.pubsub()
+        await pubsub.subscribe(intervention_id)
+        
+        try:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    data = json.loads(message["data"])
+                    if data.get("approved") is True:
+                        logger.info("Execution approved by human", intervention_id=intervention_id)
+                        return True
+                    else:
+                        raise RuntimeError(f"Execution visually DENIED by human for {action_type}")
+        finally:
+            await pubsub.unsubscribe(intervention_id)
+            await pubsub.close()
 
     async def _heartbeat_loop(self):
         """Background loop to send heartbeats every 10 seconds."""

@@ -142,6 +142,12 @@ export const api = {
     getProjectTasks: (projectId: string) =>
         apiFetch<TaskNode[]>(`/v1/projects/${projectId}/tasks`),
 
+    postIntervention: (projectId: string, taskId: string, approved: boolean) =>
+        apiFetch<void>(`/v1/projects/${projectId}/tasks/${taskId}/intervene`, {
+            method: 'POST',
+            body: JSON.stringify({ approved }),
+        }),
+
     // Cost report — Go Gateway: /v1/projects/:id/cost
     getProjectCost: (projectId: string) =>
         apiFetch<{ total_usd: number; by_agent: Record<string, number> }>(
