@@ -68,7 +68,9 @@ class BrowserTool(BaseTool):
             )
             return self._mock_act(prompt, url)
         except Exception as e:
-            return ToolResult(success=False, output="", error=f"Browser Act failed: {e!s}")
+            return ToolResult(
+                success=False, output="", error=f"Browser Act failed: {e!s}"
+            )
 
     def _mock_act(self, prompt: str, url: str | None) -> ToolResult:
         """Fallback mock for UI testing when the Nova Act SDK is unavailable locally."""
