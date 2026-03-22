@@ -1,4 +1,4 @@
-# Autonomous Multi-Agent AI Organization
+# Proximus — Autonomous Multi-Agent AI Organization
 
 [![Go](https://img.shields.io/badge/go-1.24.0-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev/)
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -11,16 +11,15 @@
 [![Rust CI](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/DsThakurRawat/Autonomous-Multi-Agent-AI-Organization/actions/workflows/rust-ci.yml)
 
 > A production-grade, event-driven system where a team of specialized AI agents autonomously plan, build, test, and ship real software from a single business idea — powered by **Amazon Nova** foundation models and **Nova Act** browser automation.
-> **Core Enterprise Infrastructure Features:**
->
-- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** (Go, Python, Rust) and deep LLM reasoning visibility with **LangSmith**.
-- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation** for AI-generated code.
-- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic cross-service agent state transitions.
-- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing** (MoE).
+
+## Core Features
+
+- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** and deep LLM reasoning visibility with **LangSmith**.
+- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation**.
+- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic state transitions.
+- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing**.
 - **Real-Time UX**: Live multi-agent task streaming via **WebSockets** and interactive **React Flow** DAG visualization.
-- **Next.js Vibe Dashboard**: Premium animated terminal UI for live task tracking and system health monitoring.
-- **Proximus CLI**: Unified launcher for instant setup, orchestration, and real-time observability.
-.
+- **Next.js Vibe Dashboard**: Premium animated UI for live task tracking and system health monitoring.
 
 ---
 
@@ -44,63 +43,18 @@ Every agent runs asynchronously over Kafka. You watch it all happen live in the 
 
 ## Architecture
 
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#f8fafc', 'primaryBorderColor': '#cbd5e1', 'primaryTextColor': '#0f172a', 'lineColor': '#475569', 'clusterBkg': '#ffffff', 'clusterBorder': '#cbd5e1', 'edgeLabelBackground': '#ffffff'}}}%%
-flowchart TB
-    User(["User — Business Idea"]) -->|"HTTPS POST"| GW
-
-    subgraph GoBackend ["Go Backend"]
-        GW["Gateway\nFiber HTTP · OAuth2 · JWT"]
-        Orch["Orchestrator\ngRPC · DAG Builder · Kafka Publisher"]
-        WS["WS-Hub\nWebSocket · Redis Pub/Sub"]
-        GW -->|"gRPC"| Orch
-        GW --> WS
-    end
-
-    Orch -->|"TaskMessage + llm_config"| Kafka
-
-    subgraph EventBus ["Apache Kafka"]
-        T["ai-org-tasks"]
-        R["ai-org-results"]
-        E["ai-org-events"]
-    end
-
-    Kafka --> Agents
-
-    subgraph Agents ["Python AI Agents"]
-        CEO["CEO · Nova Lite"]
-        CTO["CTO · Nova Lite"]
-        ENG_FE["Engineer (FE) · Nova Lite"]
-        ENG_BE["Engineer (BE) · Nova Lite"]
-        QA["QA · Nova Lite"]
-        OPS["DevOps · Nova Lite"]
-        FIN["Finance · Nova Micro"]
-    end
-
-    Agents -->|"Results"| R
-    Agents -->|"Events"| E
-    E --> WS
-
-    subgraph DB ["Postgres"]
-        P1["projects · tasks · cost_events"]
-        P2["user_llm_keys · agent_model_prefs"]
-        P3["users · tenants"]
-    end
-
-    GoBackend --> DB
-    WS -->|"WebSocket"| Dash["Next.js Dashboard\n/dashboard · /settings"]
-```
+Proximus uses a microservices architecture with a Go-based core, Python AI agents, and a Next.js dashboard. For a detailed breakdown of components and data flow, see [architecture.md](./architecture.md).
 
 ---
 
 ## Tech Stack
 
-| Command                 | Description                                                      |
-| :---------------------- | :--------------------------------------------------------------- |
-| `./proximus start` | Launches the full platform (detached)                            |
-| `./proximus stop`  | Gracefully stops all services                                    |
-| `./proximus clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
-| `./proximus tui`   | Launches the interactive Terminal UI                             |
+| Command      | Description                                                      |
+| :----------- | :--------------------------------------------------------------- |
+| `make start` | Launches the full platform (detached)                            |
+| `make stop`  | Gracefully stops all services                                    |
+| `make clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
+| `make logs`  | Tails logs for all services                                      |
 
 | Layer             | Technology                                                 |
 | ----------------- | ---------------------------------------------------------- |
@@ -143,7 +97,8 @@ cp .env.example .env
 # Edit .env and add your AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION
 
 # 3. Start the platform
-./proximus-nova start
+make start
+```
 
 ---
 
@@ -296,7 +251,7 @@ Access at `http://localhost:3000`
 ## Project Structure
 
 ```text
-├── proximus                  Main CLI Launcher (Python/Bash)
+├── Makefile                  Cross-platform shortcuts (start, stop, logs)
 ├── tui.py                    Interactive Terminal UI (Textual)
 ├── go-backend/               Go microservices
 │   ├── cmd/
@@ -367,6 +322,8 @@ helm install ai-org . --namespace ai-org-system --create-namespace \
   --set gateway.env.GOOGLE_CLIENT_SECRET=<your-secret>
 ```
 
+---
+
 ## Terraform (AWS)
 
 ```bash
@@ -377,10 +334,6 @@ terraform apply
 ```
 
 > **Note**: These files are currently managed and simulated by the DevOps agent locally. Real AWS deployment bindings will be fully integrated.
-
-Provisions (Planned): ECS Fargate, RDS Postgres, ElastiCache Redis, MSK Kafka, Route53, ALB.
-
----
 
 ---
 
@@ -408,32 +361,31 @@ The system is now hardened for production environments:
 - **PII Scrubbing** — High-performance Rust-based redaction of logs and agent outputs.
 - **AST Validation** — Real-time security analysis of AI-generated Python scripts.
 
-## Commit Message Format
-
-The project follows a standardized commit message convention to keep the history readable and searchable:
-
-- `feat`: add Kafka lease model  
-- `fix`: resolve race condition  
-- `docs`: update setup guide  
-- `refactor`: optimize DAG traversal  
-- `test`: add unit tests  
-- `chore`: dependency update
-
 ---
 
-## Contributing
+## Troubleshooting
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Commit with a descriptive message
-4. Push and open a Pull Request against `main`
+### Kafka Connectivity Issues
 
-Please run before submitting:
+If agents are not receiving tasks, ensure Kafka is healthy:
 
 ```bash
-cd go-backend && go build ./... && go vet ./...
-cd dashboard && npx tsc --noEmit
-python3 -m py_compile agents/*.py
+make status
+make logs  # check for kafka connection errors
+```
+
+If Kafka is stuck, run `make clean` to wipe volumes and restart.
+
+### Dashboard not updating
+
+Ensure the `ws-hub` service is running and that your browser can connect to `localhost:8080`. Check the browser console for WebSocket connection errors.
+
+### LLM API Errors
+
+Verify your `.env` file contains valid API keys. Check the agent logs for specific error messages:
+
+```bash
+make logs-agents
 ```
 
 ---
