@@ -125,7 +125,9 @@ func (m *LeaseMonitor) checkLeases(ctx context.Context) {
 				}
 				
 				// Optional: Set project to failed if a task permanently fails
-				m.db.Exec(ctx, `UPDATE projects SET status = 'failed' WHERE id = $1`, projectID)
+				if _, err := m.db.Exec(ctx, `UPDATE projects SET status = 'failed' WHERE id = $1`, projectID); err != nil {
+					log.Error("lease_monitor: failed to mark project as failed", zap.Error(err))
+				}
 			}
 		}
 	}
