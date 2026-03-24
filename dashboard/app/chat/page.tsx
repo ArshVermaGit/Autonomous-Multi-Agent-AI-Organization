@@ -164,7 +164,7 @@ export default function ChatPage() {
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
                             <Sparkles size={16} />
                         </div>
-                        <span className="font-bold">Proximus-Nova</span>
+                        <span className="font-bold">Proximus</span>
                     </div>
                 </header>
 

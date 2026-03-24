@@ -28,7 +28,7 @@ interface AgentPref {
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
-    bedrock: 'Amazon Bedrock (Nova)',
+    bedrock: 'Amazon Bedrock',
     openai: 'OpenAI',
     anthropic: 'Anthropic',
     google: 'Google Gemini',
@@ -484,7 +484,7 @@ export default function SettingsPage() {
                     
                     <div className="text-center py-12 border-t border-white/5">
                         <p className="text-xs text-slate-600 font-bold uppercase tracking-[0.2em] italic">
-                            Platform keys are managed by Proximus-Nova admin • Personal overrides take precedence
+                            Platform keys are managed by Proximus admin • Personal overrides take precedence
                         </p>
                     </div>
                 </div>
