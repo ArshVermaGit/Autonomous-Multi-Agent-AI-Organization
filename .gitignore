@@ -71,6 +71,8 @@ generated/
 artifacts/
 tmp_repos/
 production_readiness_scorecard.html
+merge_all.sh
+pr_maker.sh
 feedback.md
 learning_roadmap.md
 FUTURE_ROADMAP.md
