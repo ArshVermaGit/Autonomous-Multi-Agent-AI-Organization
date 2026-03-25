@@ -34,6 +34,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.41.4
 	github.com/gofiber/contrib/otelfiber v1.0.10
 	github.com/mark3labs/mcp-go v0.45.0
+	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.34.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.33.0
 	go.opentelemetry.io/otel/sdk v1.33.0
@@ -95,6 +96,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/philhofer/fwd v1.1.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
