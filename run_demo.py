@@ -6,7 +6,7 @@ Usage: python run_demo.py "Your business idea here"
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import  datetime
 import os
 import sys
 
@@ -60,7 +60,7 @@ async def run_full_demo(idea: str):  # noqa: PLR0915
             "[yellow bold]⚠️ No valid Gemini API key found. Agents will run in mock mode.[/yellow bold]"
         )
 
-    project_id = f"demo-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}"
+    project_id = f"demo-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
 
     # Initialize shared memory
     memory = ProjectMemory(project_id=project_id)

@@ -7,7 +7,7 @@ Provides LLM invocation, memory access, tool calling, and event emission.
 from abc import ABC, abstractmethod
 import asyncio
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import  datetime
 import json
 import os
 from typing import Any, cast
@@ -41,7 +41,7 @@ class AgentToolCall:
         self.parameters = parameters
         self.result: Any = None
         self.error: str | None = None
-        self.timestamp = datetime.now(UTC)
+        self.timestamp = datetime.now(timezone.utc)
 
 
 class BaseAgent(ABC):
@@ -149,7 +149,7 @@ class BaseAgent(ABC):
         heartbeat_topic = os.getenv("KAFKA_TOPIC_HEARTBEATS", "ai-org-heartbeats")
         payload = {
             "task_id": self._current_task_id,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "agent_role": self.ROLE,
             "progress": f"Executing iteration {self._iteration_count}",
             "version": self._current_task_version,
@@ -344,7 +344,7 @@ class BaseAgent(ABC):
             {
                 "role": role,
                 "content": content,
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 

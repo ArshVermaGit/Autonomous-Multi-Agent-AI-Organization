@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Generator
-from datetime import UTC, datetime
+from datetime import  datetime
 import json
 from typing import ClassVar
 
@@ -129,7 +129,7 @@ class ProximusNovaTUI(App):
                     }
                     color = colors.get(agent, "dim")
 
-                    timestamp = datetime.now(UTC).strftime("%H:%M:%S")
+                    timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
 
                     if event_type == "thinking":
                         log.write(
