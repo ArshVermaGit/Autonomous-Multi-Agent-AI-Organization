@@ -6,7 +6,7 @@ Usage: python run_demo.py "Your business idea here"
 """
 
 import asyncio
-from datetime import  datetime
+from datetime import datetime
 import os
 import sys
 

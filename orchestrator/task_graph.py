@@ -5,7 +5,7 @@ Supports parallel execution, dependency resolution, and real-time status.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
 import uuid
@@ -66,8 +66,9 @@ class Task(BaseModel):
     @property
     def duration_seconds(self) -> float | None:
         if self.started_at and self.completed_at:
-            from typing import cast
             from datetime import datetime
+            from typing import cast
+
             st = cast(datetime, self.started_at)
             ct = cast(datetime, self.completed_at)
             delta = ct - st
@@ -79,30 +80,45 @@ class Task(BaseModel):
 
     def record_start(self):
         self.status = TaskStatus.IN_PROGRESS
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
 
     def record_complete(self, output: Any = None):
         self.status = TaskStatus.COMPLETED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.output_data = output
 
     def record_fail(self, error: str):
         self.status = TaskStatus.FAILED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.error_message = error
         self.retry_count += 1
 
     def transition_to(self, new_status: TaskStatus):
         self.status = new_status
         if new_status == TaskStatus.IN_PROGRESS and not self.started_at:
-            self.started_at = datetime.now(timezone.utc)
+            self.started_at = datetime.now(UTC)
         elif new_status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
-            self.completed_at = datetime.now(timezone.utc)
+            self.completed_at = datetime.now(UTC)
+
+    def mark_started(self):
+        """Alias for record_start for test compatibility."""
+        self.record_start()
+
+    def mark_completed(self, output: Any = None):
+        """Alias for record_complete for test compatibility."""
+        self.record_complete(output)
+
+    def mark_failed(self, error: str):
+        """Alias for record_fail for test compatibility."""
+        self.record_fail(error)
+
 
 # -- Task Graph ----------------------------------------------------
 
+
 class TaskGraph(BaseModel):
     """A directed acyclic graph (DAG) of tasks representing a project plan."""
+
     project_id: str
     tasks: dict[str, Task] = Field(default_factory=dict)
     graph: Any = Field(default_factory=nx.DiGraph, exclude=True)
@@ -219,7 +235,9 @@ class TaskGraph(BaseModel):
             "failed": counts.get(str(TaskStatus.FAILED), 0),
             "in_progress": counts.get(str(TaskStatus.IN_PROGRESS), 0),
             "pending": counts.get(str(TaskStatus.PENDING), 0),
-            "progress_pct": float(int(completed / total * 1000) / 10.0) if total > 0 else 0.0,
+            "progress_pct": (
+                float(int(completed / total * 1000) / 10.0) if total > 0 else 0.0
+            ),
         }
 
     def to_dict(self) -> dict[str, Any]:

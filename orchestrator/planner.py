@@ -6,7 +6,7 @@ event broadcasting, and the self-critique feedback loop.
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, cast
 import uuid
 
@@ -63,7 +63,7 @@ class ExecutionEvent:
         self.message = message
         self.data = data or {}
         self.level = level
-        self.timestamp = datetime.now(timezone.utc)
+        self.timestamp = datetime.now(UTC)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -116,7 +116,7 @@ class OrchestratorEngine:
                 else:
                     cb(event)
             except Exception as e:
-                logger.error("Event subscriber failed", error="{:.100}".format(str(e)))
+                logger.error("Event subscriber failed", error=f"{e!s:.100}")
 
     # -- Project Bootstrap ------------------------------------------
     async def start_project(
@@ -131,7 +131,7 @@ class OrchestratorEngine:
         """
         project_id = str(uuid.uuid4())
         logger.info(
-            "Starting new project", project_id=project_id, idea="{:.80}".format(str(business_idea))
+            "Starting new project", project_id=project_id, idea=f"{business_idea!s:.80}"
         )
 
         # Initialize shared memory systems
@@ -162,7 +162,7 @@ class OrchestratorEngine:
             "business_idea": business_idea,
             "budget_usd": project_budget,
             "cloud_provider": "AWS",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
             **(user_constraints or {}),
         }
 
@@ -174,7 +174,7 @@ class OrchestratorEngine:
             "checkpoint_manager": CheckpointManager(project_id, self.output_dir),
             "task_graph": None,
             "status": "bootstrapping",
-            "started_at": datetime.now(timezone.utc),
+            "started_at": datetime.now(UTC),
             "kafka_dispatcher": None,
         }
 
@@ -183,7 +183,7 @@ class OrchestratorEngine:
             ExecutionEvent(
                 event_type="system",
                 agent_role=AgentRole.ORCHESTRATOR,
-                message="Project started: {:.60}".format(str(short_idea)),
+                message=f"Project started: {short_idea!s:.60}",
                 data={"project_id": project_id},
                 level="success",
             )
@@ -577,7 +577,7 @@ class OrchestratorEngine:
                                 description=f"Self-critique on task: {task.name}",
                                 rationale="Continuous improvement loop",
                                 input_context={
-                                    "debug_output": "{:.500}".format(str(task.output_data))
+                                    "debug_output": f"{task.output_data!s:.500}"
                                 },
                                 output=critique_result,
                                 confidence=0.85,

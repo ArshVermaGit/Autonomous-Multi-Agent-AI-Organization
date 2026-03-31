@@ -208,7 +208,7 @@ class MoERouter:
             f"success={top_breakdown.get('success_rate', 0):.3f}]"
         )
         if use_ensemble:
-            routing_reason += f" | Ensemble with {second_role} (scores gap {top_score-second_score:.3f} < 0.10)"
+            routing_reason += f" | Ensemble with {second_role} (scores gap {top_score - second_score:.3f} < 0.10)"
 
         confidence = min(1.0, top_score / max(ENSEMBLE_THRESHOLD, 0.001))
 

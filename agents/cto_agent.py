@@ -88,10 +88,10 @@ You explain your architectural decisions with rationale.
         prompt = f"""
 Design a production AWS architecture for this project.
 
-Business Vision: {business_plan.get('vision', '')}
+Business Vision: {business_plan.get("vision", "")}
 MVP Features: {json.dumps(features)}
 Budget: ${budget_usd}/month
-Target Users Year 1: {business_plan.get('estimated_users_year1', 1000)}
+Target Users Year 1: {business_plan.get("estimated_users_year1", 1000)}
 
 Return a JSON architecture specification:
 {{

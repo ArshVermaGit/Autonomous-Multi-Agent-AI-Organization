@@ -316,7 +316,7 @@ class BackendAgent(BaseAgent):
         return textwrap.dedent('''
             """SQLAlchemy ORM Models - auto-generated from CTO architecture."""
             import uuid
-            from datetime import datetime
+            from datetime import datetime, timezone
             from sqlalchemy import String, Boolean, ForeignKey, Text
             from sqlalchemy.orm import Mapped, mapped_column, relationship
             from sqlalchemy.dialects.postgresql import UUID
@@ -356,7 +356,7 @@ class BackendAgent(BaseAgent):
         return textwrap.dedent('''
             """Pydantic schemas for request/response validation."""
             import uuid
-            from datetime import datetime
+            from datetime import datetime, timezone
             from typing import Optional, List
             from pydantic import BaseModel, EmailStr, Field
 
@@ -414,7 +414,7 @@ class BackendAgent(BaseAgent):
     def _generate_auth(self) -> str:
         return textwrap.dedent('''
             """JWT Authentication utilities."""
-            from datetime import datetime, timedelta
+            from datetime import datetime, timezone, timedelta
             from typing import Optional
             from jose import JWTError, jwt
             from passlib.context import CryptContext

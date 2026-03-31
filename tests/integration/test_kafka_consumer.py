@@ -38,7 +38,6 @@ async def test_agent_microservice_consumer_loop(kafka_env, monkeypatch):
 
     # Mock _load_agent so it returns our mocked agent
     with patch("agents.agent_service._load_agent", return_value=mock_agent):
-
         service = AgentMicroservice()
         service.agent = mock_agent
         service.producer = KafkaProducerClient()

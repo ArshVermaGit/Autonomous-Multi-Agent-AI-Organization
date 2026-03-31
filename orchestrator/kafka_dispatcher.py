@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from datetime import  datetime
+from datetime import UTC, datetime
 from typing import Any
 import uuid
 
@@ -31,7 +31,9 @@ class KafkaDispatcher:
     Usage::
 
         dispatcher = KafkaDispatcher()
-        result = await dispatcher.dispatch_and_wait(task_msg, agent_role="Engineer_Backend")
+        result = await dispatcher.dispatch_and_wait(
+            task_msg, agent_role="Engineer_Backend"
+        )
     """
 
     def __init__(self) -> None:
@@ -166,5 +168,5 @@ class KafkaEventPublisher:
             agent_role=agent_role,
             event_type=event_type,
             data=data,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )

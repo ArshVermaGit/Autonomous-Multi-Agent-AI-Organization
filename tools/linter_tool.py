@@ -112,7 +112,7 @@ class SecurityScanTool(BaseTool):
             path,
             "-f",
             "json",
-            f"-l{'l' * (['low','medium','high'].index(severity) + 1)}",
+            f"-l{'l' * (['low', 'medium', 'high'].index(severity) + 1)}",
         ]
 
         result = await self._run_subprocess(cmd)

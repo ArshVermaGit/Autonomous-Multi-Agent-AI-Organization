@@ -7,7 +7,7 @@ Provides REST API + WebSocket for real-time agent event streaming.
 import asyncio
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 import os
 import time
 from typing import Any
@@ -337,7 +337,7 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": 3600,  # Mock uptime
         "agents": list(orchestrator._agent_registry.keys()),
         "active_projects": len(orchestrator._active_projects),
@@ -380,7 +380,7 @@ async def start_project(
         "progress_pct": 0,
         "tasks_total": 0,
         "tasks_done": 0,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -404,10 +404,36 @@ async def list_projects():
             "status": ctx["status"],
             "budget_usd": ctx["cost_ledger"].budget_usd,
             "spent_usd": ctx["cost_ledger"].total_spent(),
-            "progress_pct": int((len([t for t in ctx["task_graph"].tasks.values() if t.status == "completed"]) / len(ctx["task_graph"].tasks)) * 100) if ctx.get("task_graph") else 0,
+            "progress_pct": (
+                int(
+                    (
+                        len(
+                            [
+                                t
+                                for t in ctx["task_graph"].tasks.values()
+                                if t.status == "completed"
+                            ]
+                        )
+                        / len(ctx["task_graph"].tasks)
+                    )
+                    * 100
+                )
+                if ctx.get("task_graph")
+                else 0
+            ),
             "tasks_total": len(ctx["task_graph"].tasks) if ctx.get("task_graph") else 0,
-            "tasks_done": len([t for t in ctx["task_graph"].tasks.values() if t.status == "completed"]) if ctx.get("task_graph") else 0,
-            "created_at": ctx["started_at"].isoformat()
+            "tasks_done": (
+                len(
+                    [
+                        t
+                        for t in ctx["task_graph"].tasks.values()
+                        if t.status == "completed"
+                    ]
+                )
+                if ctx.get("task_graph")
+                else 0
+            ),
+            "created_at": ctx["started_at"].isoformat(),
         }
         for pid, ctx in orchestrator._active_projects.items()
     ]
@@ -451,12 +477,12 @@ async def cancel_project(project_id: str, api_key: str = Depends(verify_api_key)
     """Stop a project and clean up its resources."""
     if project_id not in orchestrator._active_projects:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     # In a real system, we'd cancel background tasks here.
     # For now, we just mark it as cancelled and remove it.
     orchestrator._active_projects[project_id]["status"] = "failed"
     # del orchestrator._active_projects[project_id] # Or keep for history
-    
+
     logger.info("Project cancelled", project_id=project_id)
     return {"status": "success", "message": "Project cancelled"}
 
@@ -486,6 +512,7 @@ async def list_agents():
 
 
 # -- Settings Stubs for Dashboard Compatibility --------------------─
+
 
 @app.get("/v1/settings/keys")
 async def list_keys():
@@ -578,7 +605,7 @@ async def websocket_events(websocket: WebSocket, project_id: str):
             {
                 "type": "connected",
                 "message": f"Connected to project {project_id}",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -625,7 +652,7 @@ async def websocket_events(websocket: WebSocket, project_id: str):
 
             except TimeoutError:
                 await websocket.send_json(
-                    {"type": "heartbeat", "timestamp": datetime.now(timezone.utc).isoformat()}
+                    {"type": "heartbeat", "timestamp": datetime.now(UTC).isoformat()}
                 )
             except Exception as e:
                 # Handle non-JSON messages or disconnects
