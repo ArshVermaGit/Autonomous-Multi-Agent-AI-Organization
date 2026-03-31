@@ -6,6 +6,5 @@
     "next": {
       "rootDir": "dashboard/"
     }
-  },
-  "rules": {}
+  }
 }
