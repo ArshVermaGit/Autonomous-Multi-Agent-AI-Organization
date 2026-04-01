@@ -66,6 +66,7 @@ secrets/
 credentials/
 
 # ── Output / Generated per-run (not source code) ────────
+claude/
 output/
 generated/
 artifacts/
