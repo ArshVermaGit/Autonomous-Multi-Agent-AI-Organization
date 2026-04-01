@@ -17,6 +17,8 @@ pub struct ExpertStats {
     pub success_rate: f64,
     /// Average USD cost per task
     pub avg_cost_usd: f64,
+    /// P95 response latency in milliseconds
+    pub p95_latency_ms: f64,
 }
 
 impl Default for ExpertStats {
@@ -25,9 +27,11 @@ impl Default for ExpertStats {
             load_factor: 0.0,
             success_rate: 1.0,
             avg_cost_usd: 0.05,
+            p95_latency_ms: 200.0,
         }
     }
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expert {
@@ -37,6 +41,15 @@ pub struct Expert {
 }
 
 // ── Route Request ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize, Default, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum Strategy {
+    #[default]
+    Balanced,
+    Performance,
+    CostSaver,
+}
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
@@ -52,6 +65,8 @@ pub struct RouteRequest {
     #[serde(default = "default_priority")]
     pub priority: String,
     #[serde(default)]
+    pub strategy: Strategy,
+    #[serde(default)]
     pub force_ensemble: bool,
     #[serde(default)]
     pub trace_id: String,
@@ -59,6 +74,7 @@ pub struct RouteRequest {
     pub experts: Option<HashMap<String, Expert>>,
     pub stats: Option<HashMap<String, ExpertStats>>,
 }
+
 
 fn default_priority() -> String {
     "medium".to_string()
@@ -74,7 +90,9 @@ pub struct ExpertScore {
     pub load: f64,
     pub success: f64,
     pub cost: f64,
+    pub latency: f64,
 }
+
 
 #[derive(Debug, Serialize)]
 pub struct RouteResponse {
