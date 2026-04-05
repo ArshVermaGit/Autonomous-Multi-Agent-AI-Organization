@@ -70,7 +70,10 @@ logs-orchestrator:
 	@docker compose logs -f orchestrator --tail=100
 
 logs-agents:
-	@docker compose logs -f ceo-agent cto-agent engineer-backend engineer-frontend qa-agent devops-agent finance-agent
+	@docker compose logs -f ceo-agent cto-agent engineer-backend engineer-frontend qa-agent devops-agent finance-agent --tail=100
+
+logs-services:
+	@docker compose logs -f mcp-server proxy metrics-svc tenant-svc health-monitor ws-hub --tail=100
 
 status:
 	@echo "📊 Service Status:"

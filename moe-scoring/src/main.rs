@@ -112,7 +112,9 @@ async fn do_route(req: RouteRequest, state: &AppState) -> RouteResponse {
         &experts_to_rank,
         &stats_map,
         !is_critical, // skip overloaded unless critical
+        req.strategy,
     );
+
 
     if rankings.is_empty() {
         // All overloaded — last-resort fallback

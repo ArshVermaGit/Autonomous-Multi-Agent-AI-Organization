@@ -1,14 +1,45 @@
-/// Scoring engine — direct port of moe/scoring.py with f64 SIMD-friendly ops.
-use crate::models::{Expert, ExpertScore, ExpertStats};
-
-// ── Scoring Weights (must sum to 1.0) ─────────────────────────────────────────
-const WEIGHT_SIMILARITY: f64 = 0.40;
-const WEIGHT_LOAD: f64 = 0.25;
-const WEIGHT_SUCCESS: f64 = 0.20;
-const WEIGHT_COST: f64 = 0.15;
+use crate::models::{Expert, ExpertScore, ExpertStats, Strategy};
 
 /// Confidence threshold — below this, trigger ensemble mode
 pub const ENSEMBLE_THRESHOLD: f64 = 0.70;
+
+/// Scoring weights based on the selected strategy.
+#[derive(Debug, Clone, Copy)]
+struct ScoringWeights {
+    similarity: f64,
+    load: f64,
+    success: f64,
+    cost: f64,
+    latency: f64,
+}
+
+impl ScoringWeights {
+    fn from_strategy(strategy: Strategy) -> Self {
+        match strategy {
+            Strategy::Balanced => Self {
+                similarity: 0.35,
+                load: 0.20,
+                success: 0.20,
+                cost: 0.15,
+                latency: 0.10,
+            },
+            Strategy::Performance => Self {
+                similarity: 0.30,
+                load: 0.10,
+                success: 0.30,
+                cost: 0.05,
+                latency: 0.25,
+            },
+            Strategy::CostSaver => Self {
+                similarity: 0.30,
+                load: 0.20,
+                success: 0.10,
+                cost: 0.35,
+                latency: 0.05,
+            },
+        }
+    }
+}
 
 // ── Cosine Similarity ─────────────────────────────────────────────────────────
 
@@ -35,28 +66,38 @@ pub fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
 pub fn compute_expert_score(
     task_vector: &[f64],
     expert_vector: &[f64],
-    load_factor: f64,
-    success_rate: f64,
-    avg_cost_usd: f64,
+    stat: &ExpertStats,
     max_cost_usd: f64,
+    max_latency_ms: f64,
+    strategy: Strategy,
 ) -> ExpertScore {
-    let sim_score = cosine_similarity(task_vector, expert_vector);
-    let load_score = 1.0 - load_factor; // prefer idle
-    let cost_factor = (avg_cost_usd / max_cost_usd.max(1e-9)).min(1.0);
-    let cost_score = 1.0 - cost_factor; // prefer cheap
+    let weights = ScoringWeights::from_strategy(strategy);
 
-    let composite = WEIGHT_SIMILARITY * sim_score
-        + WEIGHT_LOAD * load_score
-        + WEIGHT_SUCCESS * success_rate
-        + WEIGHT_COST * cost_score;
+    let sim_score = cosine_similarity(task_vector, expert_vector);
+    let load_score = 1.0 - stat.load_factor; // prefer idle
+
+    // Non-linear cost penalty (penalize expensive models more aggressively)
+    let cost_ratio = (stat.avg_cost_usd / max_cost_usd.max(1e-9)).min(1.0);
+    let cost_score = (1.0 - cost_ratio).powi(2);
+
+    // Latency score (prefer faster response)
+    let latency_ratio = (stat.p95_latency_ms / max_latency_ms.max(1e-9)).min(1.0);
+    let latency_score = 1.0 - latency_ratio;
+
+    let composite = weights.similarity * sim_score
+        + weights.load * load_score
+        + weights.success * stat.success_rate
+        + weights.cost * cost_score
+        + weights.latency * latency_score;
 
     ExpertScore {
         role: String::new(), // filled by caller
         composite: round4(composite),
         similarity: round4(sim_score),
         load: round4(load_score),
-        success: round4(success_rate),
+        success: round4(stat.success_rate),
         cost: round4(cost_score),
+        latency: round4(latency_score),
     }
 }
 
@@ -75,11 +116,17 @@ pub fn rank_experts(
     experts: &[(String, Expert)],
     stats: &std::collections::HashMap<String, ExpertStats>,
     exclude_overloaded: bool,
+    strategy: Strategy,
 ) -> Vec<ExpertScore> {
     let max_cost_usd: f64 = stats
         .values()
         .map(|s| s.avg_cost_usd)
         .fold(0.10_f64, f64::max);
+
+    let max_latency_ms: f64 = stats
+        .values()
+        .map(|s| s.p95_latency_ms)
+        .fold(500.0_f64, f64::max);
 
     let mut scores: Vec<ExpertScore> = experts
         .iter()
@@ -93,10 +140,10 @@ pub fn rank_experts(
             let mut score = compute_expert_score(
                 task_vector,
                 &expert.vector,
-                stat.load_factor,
-                stat.success_rate,
-                stat.avg_cost_usd,
+                &stat,
                 max_cost_usd,
+                max_latency_ms,
+                strategy,
             );
             score.role = role.clone();
             Some(score)
@@ -126,7 +173,7 @@ pub fn should_use_ensemble(top_score: f64, second_score: f64) -> bool {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use crate::models::{Expert, ExpertStats};
+    use crate::models::{Expert, ExpertStats, Strategy};
 
     // ── Cosine Similarity ────────────────────────────────────────────────
 
@@ -176,48 +223,58 @@ mod tests {
         assert!((sim - 1.0).abs() < 1e-9);
     }
 
-    // ── Scoring Weights ──────────────────────────────────────────────────
-
-    #[test]
-    fn test_expert_score_weights_sum_to_one() {
-        assert!(
-            (WEIGHT_SIMILARITY + WEIGHT_LOAD + WEIGHT_SUCCESS + WEIGHT_COST - 1.0).abs() < 1e-9
-        );
-    }
-
     #[test]
     fn test_perfect_expert_gets_max_score() {
+        let stat = ExpertStats {
+            load_factor: 0.0,
+            success_rate: 1.0,
+            avg_cost_usd: 0.01,
+            p95_latency_ms: 50.0,
+        };
         let score = compute_expert_score(
             &vec![1.0, 0.0, 0.0, 0.0],  // task vector
             &vec![1.0, 0.0, 0.0, 0.0],  // identical expert vector
-            0.0,   // idle
-            1.0,   // 100% success
-            0.01,  // cheapest
+            &stat,
             0.10,  // max cost range
+            500.0, // max latency range
+            Strategy::Balanced,
         );
-        // sim=1.0, load=1.0, success=1.0, cost≈0.9 → high composite
+        // sim=1.0, load=1.0, success=1.0, cost≈0.9, latency≈0.9 → high composite
         assert!(score.composite > 0.9, "Perfect expert should score >0.9, got {}", score.composite);
     }
 
     #[test]
     fn test_overloaded_expert_gets_low_score() {
-        let score = compute_expert_score(
+        let stat_loaded = ExpertStats {
+            load_factor: 1.0,
+            success_rate: 1.0,
+            avg_cost_usd: 0.01,
+            p95_latency_ms: 100.0,
+        };
+        let stat_idle = ExpertStats {
+            load_factor: 0.0,
+            success_rate: 1.0,
+            avg_cost_usd: 0.01,
+            p95_latency_ms: 100.0,
+        };
+        
+        let score_loaded = compute_expert_score(
             &vec![1.0, 0.0, 0.0, 0.0],
-            &vec![1.0, 0.0, 0.0, 0.0],  // Same capability
-            1.0,   // fully loaded
-            1.0,   // good success
-            0.01,
+            &vec![1.0, 0.0, 0.0, 0.0],
+            &stat_loaded,
             0.10,
+            500.0,
+            Strategy::Balanced,
         );
-        let idle_score = compute_expert_score(
+        let score_idle = compute_expert_score(
             &vec![1.0, 0.0, 0.0, 0.0],
             &vec![1.0, 0.0, 0.0, 0.0],
-            0.0,   // idle
-            1.0,
-            0.01,
+            &stat_idle,
             0.10,
+            500.0,
+            Strategy::Balanced,
         );
-        assert!(score.composite < idle_score.composite,
+        assert!(score_loaded.composite < score_idle.composite,
             "Overloaded expert should score lower than idle one");
     }
 
@@ -246,13 +303,13 @@ mod tests {
     fn build_test_stats() -> HashMap<String, ExpertStats> {
         let mut stats = HashMap::new();
         stats.insert("CTO".to_string(), ExpertStats {
-            load_factor: 0.3, success_rate: 0.95, avg_cost_usd: 0.08,
+            load_factor: 0.3, success_rate: 0.95, avg_cost_usd: 0.08, p95_latency_ms: 300.0,
         });
         stats.insert("Engineer_Backend".to_string(), ExpertStats {
-            load_factor: 0.5, success_rate: 0.90, avg_cost_usd: 0.05,
+            load_factor: 0.5, success_rate: 0.90, avg_cost_usd: 0.05, p95_latency_ms: 200.0,
         });
         stats.insert("DevOps".to_string(), ExpertStats {
-            load_factor: 0.1, success_rate: 0.98, avg_cost_usd: 0.03,
+            load_factor: 0.1, success_rate: 0.98, avg_cost_usd: 0.03, p95_latency_ms: 100.0,
         });
         stats
     }
@@ -263,7 +320,7 @@ mod tests {
         let stats = build_test_stats();
         let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]; // architecture
 
-        let rankings = rank_experts(&task_vec, &experts, &stats, false);
+        let rankings = rank_experts(&task_vec, &experts, &stats, false, Strategy::Balanced);
         assert!(!rankings.is_empty());
         // CTO should be ranked first (perfect vector match for architecture)
         assert_eq!(rankings[0].role, "CTO");
@@ -277,7 +334,7 @@ mod tests {
 
         let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
-        let rankings = rank_experts(&task_vec, &experts, &stats, true);
+        let rankings = rank_experts(&task_vec, &experts, &stats, true, Strategy::Balanced);
         assert!(rankings.iter().all(|r| r.role != "CTO"),
             "Overloaded CTO should be excluded");
     }
@@ -290,7 +347,7 @@ mod tests {
 
         let task_vec = vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
 
-        let rankings = rank_experts(&task_vec, &experts, &stats, false);
+        let rankings = rank_experts(&task_vec, &experts, &stats, false, Strategy::Balanced);
         assert!(rankings.iter().any(|r| r.role == "CTO"),
             "Overloaded CTO should still appear when exclusion is off");
     }

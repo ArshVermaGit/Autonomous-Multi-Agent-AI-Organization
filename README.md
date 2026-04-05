@@ -14,13 +14,14 @@
 
 ## Core Features
 
-- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry** and deep LLM reasoning visibility with **LangSmith**.
-- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation**.
-- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic state transitions.
+- **Full-Stack Observability**: Unified distributed tracing via **OpenTelemetry (Jaeger)**, metrics via **Prometheus/Grafana**, and deep LLM reasoning visibility with **LangSmith**.
+- **Production-Grade Shielding**: Kernel-level sandboxing with **gVisor** (`runsc`), and high-performance **Rust-based AST validation and PII scrubbing**.
+- **Distributed Reliability**: API Idempotency (Redis) and **Distributed Sagas** for atomic state transitions across microservices.
 - **MCP Sandboxing**: Native **Model Context Protocol (MCP)** server for secure, standardized tool execution and resource access.
-- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing**.
-- **Real-Time UX**: Live multi-agent task streaming via **WebSockets** and interactive **React Flow** DAG visualization.
-- **Next.js Vibe Dashboard**: Premium animated UI for live task tracking and system health monitoring.
+- **ML Memory & MoE**: High-performance **Semantic Vector Caching** (Qdrant) and sub-ms **Rust-based expert routing** (Mixture of Experts).
+- **Real-Time UX**: Live multi-agent task streaming via **WebSockets (ws-hub)** and interactive **React Flow** DAG visualization.
+- **Next.js Vibe Dashboard**: Premium animated UI for live task tracking, system health monitoring, and LLM key management.
+- **Interactive TUI**: A powerful **Textual-based Terminal UI** for headless control and live event monitoring.
 
 ---
 
@@ -30,8 +31,8 @@ You type a business idea. The system:
 
 1. **CEO Agent** — Researches the market, defines scope and requirements
 2. **CTO Agent** — Designs the system architecture and database schema
-3. **Frontend Engineer Agent** — Writes React/TypeScript/CSS code and responsive layouts
-4. **Backend Engineer Agent** — Writes Python/Go APIs, database schemas, and logic
+3. **Backend Engineer Agent** — Writes Python/Go APIs, database schemas, and logic
+4. **Frontend Engineer Agent** — Writes React/TypeScript/CSS code and responsive layouts
 5. **QA Agent** — Runs tests, detects edge cases and bugs
 6. **DevOps Agent** — Generates Terraform, Kubernetes manifests, CI/CD pipelines
 7. **Finance Agent** — Tracks token usage and enforces budget limits
@@ -57,20 +58,22 @@ Proximus uses a microservices architecture with a Go-based core, Python AI agent
 | `make clean` | Stops services and **wipes all volumes** (fixes Kafka ID issues) |
 | `make logs`  | Tails logs for all services                                      |
 
-| Layer             | Technology                                                 |
-| ----------------- | ---------------------------------------------------------- |
-| **API Gateway**   | Go 1.24.0 · Fiber v2                                       |
-| **Orchestrator**  | Go · gRPC · DAG engine                                     |
-| **WebSocket Hub** | Go · Redis Pub/Sub                                         |
-| **AI Agents**     | Python 3.12 · Amazon Bedrock / OpenAI / Anthropic / Google |
-| **Event Bus**     | Apache Kafka · ZooKeeper                                   |
-| **Database**      | PostgreSQL 15 · pgcrypto                                   |
-| **Cache**         | Redis 7                                                    |
-| **Dashboard**     | Next.js 14 · TypeScript                                    |
-| **MoE Routing**   | Rust (sub-ms expert scoring)                               |
-| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                                  |
-| **Auth (Local)**  | None — straight to dashboard                               |
-| **Infra**         | Docker Compose · Helm · Terraform                          |
+| Layer             | Technology                                                       |
+| ----------------- | ---------------------------------------------------------------- |
+| **API Gateway**   | Go 1.24.0 · Fiber v2                                             |
+| **Orchestrator**  | Go · gRPC · DAG engine                                           |
+| **WebSocket Hub** | Go · Redis Pub/Sub                                               |
+| **AI Agents**     | Python 3.12 · Amazon Bedrock / OpenAI / Anthropic / Google       |
+| **Event Bus**     | Apache Kafka 7.6.0 · ZooKeeper                                   |
+| **Database**      | PostgreSQL 15 · pgcrypto                                         |
+| **Cache & Store** | Redis 7 · Qdrant 1.8.2 (Vector DB)                               |
+| **Dashboard**     | Next.js 14 · TypeScript · React Flow                             |
+| **TUI**           | Python · Textual · WebSockets                                    |
+| **Observability** | Jaeger 1.54 · Prometheus 2.49.1 · Grafana 10.3.1 · OpenTelemetry |
+| **MoE Routing**   | Rust (sub-ms expert scoring)                                     |
+| **Security**      | Rust (AST Validation + PII Masking)                              |
+| **Auth (SaaS)**   | Google OAuth2 · RS256 JWT                                        |
+| **Infra**         | Docker Compose · Helm · Terraform                                |
 
 ---
 
@@ -193,8 +196,8 @@ By default, the entire system is powered by Amazon Nova models. However, the orc
 | :------------ | :--------------- | :----------------------- | :------------------------ |
 | CEO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
 | CTO           | Bedrock          | `amazon.nova-lite-v1:0`  | OpenAI, Anthropic, Google |
-| Engineer (BE) | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
-| Engineer (FE) | Bedrock          | `amazon.nova-lite-v1:0`  | Google (Gemini)           |
+| Backend Eng   | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
+| Frontend Eng  | Bedrock          | `amazon.nova-lite-v1:0`  | Google (Gemini)           |
 | QA            | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic, OpenAI         |
 | DevOps        | Bedrock          | `amazon.nova-lite-v1:0`  | Anthropic                 |
 | Finance       | Bedrock          | `amazon.nova-micro-v1:0` | OpenAI, Google            |
@@ -278,9 +281,11 @@ Access at `http://localhost:3000`
 │   ├── base_agent.py         Multi-provider LLM caller (OpenAI/Anthropic/Google)
 │   ├── agent_service.py      Kafka consumer + per-task LLM resolution
 │   ├── model_registry.py     Default model configs per agent role
+│   ├── roles.py              Typed role definitions
 │   ├── ceo_agent.py
 │   ├── cto_agent.py
-│   ├── engineer_agent.py     (Handles FE and BE roles)
+│   ├── backend_agent.py      (Handles Backend Engineer tasks)
+│   ├── frontend_agent.py     (Handles Frontend Engineer tasks)
 │   ├── qa_agent.py
 │   ├── devops_agent.py
 │   └── finance_agent.py
@@ -295,21 +300,19 @@ Access at `http://localhost:3000`
 ├── infra/
 │   ├── helm/                 Kubernetes Helm charts
 │   └── terraform/            AWS infrastructure (Mocked by DevOps Agent)
+├── monitoring/               Grafana dashboards and Prometheus configuration
+├── observability/            Python-based OpenTelemetry tracing and metrics
 ├── api/                      API definitions and specs
-├── infrastructure/           IaC files and definitions
-├── k8s/                      Additional Kubernetes manifests
 ├── messaging/                Kafka schemas and clients
-├── monitoring/               Monitoring configurations
-├── observability/            Tracing and metrics
 ├── orchestrator/             Python orchestrator logic
 ├── output/                   Log/artifact outputs
-├── tests/                    Test scripts
+├── tests/                    Test suite (unit and integration)
 ├── tools/                    Shared agent tools
 ├── utils/                    Shared utility functions
+├── tui.py                    Interactive Terminal UI (Textual)
 ├── docker-compose.yml        Root compose file (SaaS)
 ├── docker-compose.observability.yml Metrics and Observability
 ├── .env.example              SaaS mode env template
-├── .env.local.example        Local mode env template
 ├── requirements.txt          Python dependencies
 └── Dockerfile.agent          Python agent container image
 ```
@@ -391,6 +394,21 @@ Verify your `.env` file contains valid API keys. Check the agent logs for specif
 ```bash
 make logs-agents
 ```
+
+---
+
+## Contributing
+
+We welcome contributions from the community! Whether you're fixing a bug, adding a feature, or improving documentation, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on our PR workflow and coding standards.
+
+---
+
+## Branding & Identity
+
+**Proximus** is the official identity of the Autonomous Multi-Agent AI Organization. When contributing:
+
+- Use **Proximus** when referring to the platform as a whole.
+- Maintain the specialized agent roles (CEO, CTO, etc.) as the core organizational units.
 
 ---
 
